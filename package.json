@@ -1,0 +1,31 @@
+{
+  "name": "mg-pump-bot",
+  "module": "index.ts",
+  "type": "module",
+  "scripts": {
+    "dev": "bun ./index.ts",
+    "build": "bun build ./index.ts --outdir ./build --target=bun",
+    "start": "bun ./build/index.js"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/luxon": "^3.4.2",
+    "@types/node-telegram-bot-api": "^0.64.2"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@types/i18next": "^13.0.0",
+    "@types/lodash.omit": "^4.5.9",
+    "@types/ws": "^8.5.10",
+    "axios": "^1.6.7",
+    "crypto": "^1.0.1",
+    "events": "^3.3.0",
+    "i18next": "^23.10.0",
+    "lodash.omit": "^4.5.0",
+    "luxon": "^3.4.4",
+    "node-telegram-bot-api": "^0.64.0",
+    "ws": "^8.16.0"
+  }
+}
