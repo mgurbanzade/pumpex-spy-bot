@@ -9,7 +9,7 @@ import { sendSelectPairs } from "./textUtils";
 export const handleStart = (msg: Message, botService: BotService) => {
   const currentChat = botService.getChatConfig(msg.chat.id);
 
-  if (currentChat && currentChat.selectedPairs.length) {
+  if (currentChat && currentChat?.selectedPairs?.length) {
     return botService.sendMessage(
       msg.chat.id,
       i18next.t("already-started", {

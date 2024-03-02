@@ -44,7 +44,7 @@ class BinanceAPIService extends EventEmitter {
     const groupsOfPairs = this.splitIntoGroups(symbols, groupSize);
     const handleMessage = (data: Record<string, any>) => {
       const message = JSON.parse(data as any);
-      this.emit("messageReceived", message);
+      this.emit(EVENTS.MESSAGE_RECEIVED, message);
     };
 
     groupsOfPairs.forEach((pairsGroup, index) => {

@@ -1,4 +1,5 @@
 import i18n from "../i18n";
+import { getBinanceFuturesURL } from "../utils/constants";
 import MultiTradeQueue from "./MultiTradeQueue";
 import type TelegramBot from "node-telegram-bot-api";
 
@@ -24,7 +25,6 @@ class PumpService {
     const stream = message.stream; // stream name
     const pair = stream.split("@")[0].toUpperCase(); // pair name
     const selectedPairs = this.config.selectedPairs;
-
     if (selectedPairs?.length && !selectedPairs?.includes(pair)) return;
     const trade = message.data;
 
@@ -32,15 +32,22 @@ class PumpService {
     const checkResult = this.multiTradeQueue.checkAndLogSignificantPump(pair);
 
     if (checkResult !== null) {
-      const { pair, startPrice, lastPrice, diff } = checkResult;
+      const { pair, startPrice, lastPrice, diff, totalPumps } = checkResult;
+      const link = getBinanceFuturesURL(i18n.language, pair);
+
       const message = i18n.t("pump-detected", {
-        pair,
+        pair: `[${pair}](${link})`, // pair name
+        link,
         startPrice,
         lastPrice,
         diff,
+        totalPumps,
       });
 
-      this.bot.sendMessage(this.config.chatId, message);
+      this.bot.sendMessage(this.config.chatId, message, {
+        parse_mode: "Markdown",
+        disable_web_page_preview: true,
+      });
     }
   };
 }

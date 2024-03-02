@@ -12,6 +12,6 @@
   "already-started": "Scanning for pumps... Current percentage: *{{percentage}}%*",
   "started": "Started! Scanning for pumps...",
   "all-except": "All pairs expect:",
-  "pump-detected": "🪙 {{pair}}\n\n----------------\n\nPump detected!\n\n🔴 Previous price: {{startPrice}} USDT\n\n🟢 Current price: {{lastPrice}} USDT\n\n💹 Diff: +{{diff}}%",
+  "pump-detected": "🪙 {{pair}}\n\n----------------\n\nPump detected!\n\n🔴 Previous price: {{startPrice}} USDT\n\n🟢 Current price: {{lastPrice}} USDT\n\n💹 Diff: +{{diff}}%\n\n🔔 Signals so far: *{{totalPumps}}*",
   "invalid-pairs": "❌ *These pairs are not valid or available:*\n\n {{invalidPairs}}"
 }

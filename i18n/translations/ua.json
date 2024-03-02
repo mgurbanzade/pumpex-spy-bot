@@ -12,6 +12,6 @@
   "already-started": "Сканую... Шукаю пампи від *{{percentage}}%*",
   "started": "Поїхали! Йде пошук пампів...",
   "all-except": "Всі пари, крім:",
-  "pump-detected": "🪙 {{pair}}\n\n----------------\n\nВиявлено памп!\n\n🔴 Попередня ціна: {{startPrice}} USDT\n\n🟢 Поточна ціна: {{lastPrice}} USDT\n\n💹 Ріст: +{{diff}}%",
+  "pump-detected": "🪙 *{{pair}}*\n\n----------------\n\nВиявлено памп!\n\n🔴 Попередня ціна: {{startPrice}} USDT\n\n🟢 Поточна ціна: {{lastPrice}} USDT\n\n💹 Ріст: +{{diff}}%\n\n🔔 Cигналів за сьогодні: *{{totalPumps}}*",
   "invalid-pairs": "❌ *Таких пар не існує або вони недоступні:*\n\n {{invalidPairs}}"
 }
