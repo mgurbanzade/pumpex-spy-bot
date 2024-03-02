@@ -41,12 +41,6 @@ export const sendSettingsOptions = (msg: Message, botService: BotService) => {
         ],
         [
           {
-            text: i18next.t("exclude-pairs"),
-            callback_data: "exclude-pairs",
-          },
-        ],
-        [
-          {
             text: i18next.t("select-language"),
             callback_data: "select-language",
           },

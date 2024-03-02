@@ -6,7 +6,6 @@ type Config = {
   language: "en" | "ru" | "ua";
   percentage: number;
   chatId: number;
-  excludedPairs: string[];
   selectedPairs: string[];
 };
 
@@ -23,14 +22,12 @@ class PumpService {
 
   public handleMessage = (message: any) => {
     const stream = message.stream; // stream name
-    const pair = stream.split("@")[0]; // pair name
-    const excludedPairs = this.config.excludedPairs;
+    const pair = stream.split("@")[0].toUpperCase(); // pair name
     const selectedPairs = this.config.selectedPairs;
 
-    if (excludedPairs?.length && excludedPairs.includes(pair)) return;
     if (selectedPairs?.length && !selectedPairs?.includes(pair)) return;
-
     const trade = message.data;
+
     this.multiTradeQueue.addTrade(pair, trade); // Добавляем сделку в соответствующую очередь
     const checkResult = this.multiTradeQueue.checkAndLogSignificantPump(pair);
 

@@ -1,5 +1,7 @@
+import EventEmitter from "events";
 import TelegramBot from "node-telegram-bot-api";
 import omit from "lodash.omit";
+import isEqual from "lodash.isequal";
 import PumpService from "./PumpService";
 
 import type {
@@ -13,25 +15,25 @@ import {
   handleStop,
 } from "../utils/eventHandlers";
 import { sendSettingsOptions } from "../utils/keyboardUtils";
-import { handleExcludePairs, handleIncludePairs } from "../utils/textUtils";
+import { handleIncludePairs } from "../utils/textUtils";
+import { EVENTS } from "../utils/constants";
 
 type BotConfig = {
   language: "en" | "ru" | "ua";
-  isStopped: boolean;
   percentage: number;
   selectedPairs: string[];
-  excludedPairs: string[];
   isIncludePairs: boolean;
-  isExcludePairs: boolean;
 };
 
-export default class BotService {
+export default class BotService extends EventEmitter {
   public bot: TelegramBot;
   private chatConfig: { [key: string]: BotConfig } = {};
   private pumpServices: { [key: string]: PumpService };
   private availableSymbols: string[];
+  private pairsToSubscribe: string[] = [];
 
   constructor() {
+    super();
     this.availableSymbols = [];
     this.pumpServices = {};
     this.bot = new TelegramBot(process.env.TELEGRAM_API_TOKEN as string, {
@@ -40,7 +42,6 @@ export default class BotService {
 
     this.bot.onText(/\/start/, (msg) => handleStart(msg, this));
     this.bot.onText(/\/stop/, (msg) => handleStop(msg, this));
-
     this.bot.on("callback_query", (cbq: CallbackQuery) =>
       handleCallbackQuery(cbq, this)
     );
@@ -52,10 +53,6 @@ export default class BotService {
 
       if (config.isIncludePairs) {
         return handleIncludePairs(msg, this);
-      }
-
-      if (config.isExcludePairs) {
-        return handleExcludePairs(msg, this);
       }
     });
   }
@@ -74,17 +71,17 @@ export default class BotService {
     this.chatConfig[chatId] = { ...this.chatConfig[chatId], ...config };
   }
 
+  public removeChatConfig(chatId: number) {
+    this.chatConfig = omit(this.chatConfig, chatId);
+  }
+
   public getChatConfig(chatId: number): BotConfig {
     return this.chatConfig[chatId];
   }
 
-  public setNewPumpService(
-    chatId: number,
-    selectedPairs: string[] = [],
-    excludedPairs: string[] = []
-  ) {
+  public setNewPumpService(chatId: number, selectedPairs: string[] = []) {
     const config = this.getChatConfig(chatId);
-    const pumpConfig = { ...config, chatId };
+    const pumpConfig = { ...config, chatId, selectedPairs };
     this.pumpServices[chatId] = new PumpService(pumpConfig, this);
   }
 
@@ -98,6 +95,16 @@ export default class BotService {
 
   public getAvailableSymbols() {
     return this.availableSymbols;
+  }
+
+  public setPairsToSubscribe(pairs: string[]) {
+    const uniquePairs = new Set([...this.pairsToSubscribe, ...pairs]);
+    const uniquePairsArray = Array.from(uniquePairs);
+
+    if (isEqual(uniquePairsArray, this.pairsToSubscribe)) return;
+
+    this.pairsToSubscribe = Array.from(uniquePairs);
+    this.emit(EVENTS.SUBSCRIPTIONS_UPDATED, this.pairsToSubscribe);
   }
 
   public sendMessage(

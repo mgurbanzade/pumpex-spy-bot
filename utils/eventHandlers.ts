@@ -3,42 +3,44 @@ import { saveLanguage, sendSelectLanguages } from "./languageUtils";
 import { sendPercentageOptions } from "./keyboardUtils";
 import type { CallbackQuery, Message, ParseMode } from "node-telegram-bot-api";
 import type BotService from "../services/BotService";
-import { PERCENTAGES } from "./constants";
-import { sendExcludePairs, sendSelectPairs } from "./textUtils";
+import { DEFAULT_PERCENTAGE, PERCENTAGES } from "./constants";
+import { sendSelectPairs } from "./textUtils";
 
 export const handleStart = (msg: Message, botService: BotService) => {
   const currentChat = botService.getChatConfig(msg.chat.id);
 
-  if (currentChat && !currentChat.isStopped) {
-    return botService.sendMessage(msg.chat.id, i18next.t("already-started"));
+  if (currentChat && currentChat.selectedPairs.length) {
+    return botService.sendMessage(
+      msg.chat.id,
+      i18next.t("already-started", {
+        percentage: currentChat.percentage,
+      }),
+      {
+        parse_mode: "Markdown" as ParseMode,
+      }
+    );
   }
 
-  if (currentChat && currentChat.isStopped) {
-    botService.setNewPumpService(msg.chat.id);
-  }
+  const lang = msg?.from?.language_code as string;
+  const language = ["en", "ru", "ua"].includes(lang)
+    ? (lang as "en" | "ru" | "ua")
+    : "en";
 
-  if (!currentChat) {
-    botService.updateChatConfig(msg.chat.id, {
-      language: "en",
-      isStopped: false,
-      percentage: 5,
-      selectedPairs: [],
-      excludedPairs: [],
-      isIncludePairs: false,
-      isExcludePairs: false,
-    });
-  }
+  i18next.changeLanguage(language);
 
-  sendPercentageOptions(msg.chat.id, botService);
+  botService.updateChatConfig(msg.chat.id, {
+    language,
+    percentage: DEFAULT_PERCENTAGE,
+    selectedPairs: [],
+    isIncludePairs: false,
+  });
+
+  sendSelectPairs(msg.chat.id, botService);
 };
 
 export const handleStop = (msg: Message, botService: BotService) => {
   botService.removePumpService(msg.chat.id);
-
-  botService.updateChatConfig(msg.chat.id, {
-    isStopped: true,
-  });
-
+  botService.removeChatConfig(msg.chat.id);
   botService.sendMessage(msg.chat.id, i18next.t("stopped"));
 };
 
@@ -59,9 +61,6 @@ export const handleCallbackQuery = (
       break;
     case "select-pairs":
       sendSelectPairs(message.chat.id, botService);
-      break;
-    case "exclude-pairs":
-      sendExcludePairs(message.chat.id, botService);
       break;
     case "select-language":
       sendSelectLanguages(message.chat.id, botService);
@@ -105,7 +104,7 @@ const handlePercentageConfig = (
 export const sendCurrentPairs = (
   chatId: number,
   botService: BotService,
-  action: "include" | "exclude"
+  action: "include"
 ) => {
   const chatConfig = botService.getChatConfig(chatId);
 
@@ -114,18 +113,6 @@ export const sendCurrentPairs = (
       const message = `${i18next.t(
         "current-pairs"
       )}:\n\n${chatConfig.selectedPairs.join(", ")}`;
-
-      return botService.sendMessage(chatId, message, {
-        parse_mode: "Markdown" as ParseMode,
-      });
-    }
-  }
-
-  if (action === "exclude") {
-    if (chatConfig.excludedPairs.length) {
-      const message = `${i18next.t("current-pairs")}:\n\n${i18next.t(
-        "all-except"
-      )}\n\n${chatConfig.excludedPairs.join(", ")}`;
 
       return botService.sendMessage(chatId, message, {
         parse_mode: "Markdown" as ParseMode,
