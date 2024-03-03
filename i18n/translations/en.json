@@ -1,8 +1,8 @@
 {
-  "select-language": "🌍 Select language",
-  "select-percentage": "Change percentage",
-  "select-percentage-desc": "*What percentage of pumps you want to detect?*\n\nThe lower the value, the more notifications. Default: 5%",
   "select-pairs": "✅️️ Select pairs",
+  "select-percentage": "📈 Change percentage",
+  "select-language": "🌍 Change language",
+  "select-percentage-desc": "*Please send what percentage of pumps you want to detect.*\n\nThe lower the value, the more notifications.\n\n*Min: 0.1%*\n\nDefault: 1%",
   "select-pairs-desc": "*Please define comma-separated pairs you want to track*\n\n*Example:* BTCUSDT, ETHUSDT\n\n_P.S In case of mistakes settings will be ignored_",
   "select-settings": "*Choose settings:*",
   "settings-saved-general": "✅ Done!\n\nPump percentage: {{percentage}}%!",
@@ -13,5 +13,5 @@
   "started": "Started! Scanning for pumps...",
   "all-except": "All pairs expect:",
   "pump-detected": "🪙 {{pair}}\n\n----------------\n\nPump detected!\n\n🔴 Previous price: {{startPrice}} USDT\n\n🟢 Current price: {{lastPrice}} USDT\n\n💹 Diff: +{{diff}}%\n\n🔔 Signals so far: *{{totalPumps}}*",
-  "invalid-pairs": "❌ *These pairs are not valid or available:*\n\n {{invalidPairs}}"
+  "invalid-pairs": "❌ *These pairs are not valid or available:*\n\n{{invalidPairs}}"
 }

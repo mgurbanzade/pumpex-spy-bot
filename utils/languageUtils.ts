@@ -11,8 +11,13 @@ export const saveLanguage = (
     language,
   });
 
-  i18next.changeLanguage(language);
-  botService.sendMessage(chatId, i18next.t("settings-saved"));
+  botService.sendMessage(
+    chatId,
+    i18next.t("settings-saved", {
+      lng: language,
+    })
+  );
+  botService.setNewPumpService(chatId);
 };
 
 export const sendSelectLanguages = (chatId: number, botService: BotService) => {
@@ -32,5 +37,11 @@ export const sendSelectLanguages = (chatId: number, botService: BotService) => {
     },
   };
 
-  botService.sendMessage(chatId, `*${i18next.t("select-language")}:*`, options);
+  botService.sendMessage(
+    chatId,
+    `*${i18next.t("select-language", {
+      lng: botService.getChatConfig(chatId).language,
+    })}:*`,
+    options
+  );
 };

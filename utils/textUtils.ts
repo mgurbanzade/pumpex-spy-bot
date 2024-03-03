@@ -11,7 +11,14 @@ export const sendSelectPairs = (chatId: number, botService: BotService) => {
   botService.updateChatConfig(chatId, {
     isIncludePairs: true,
   });
-  botService.sendMessage(chatId, i18next.t("select-pairs-desc"), options);
+
+  botService.sendMessage(
+    chatId,
+    i18next.t("select-pairs-desc", {
+      lng: botService.getChatConfig(chatId).language,
+    }),
+    options
+  );
 };
 
 export const handleIncludePairs = (
@@ -21,7 +28,10 @@ export const handleIncludePairs = (
   const availableSymbols = botService.getAvailableSymbols();
 
   const inputSymbols =
-    message.text?.split(",").map((text) => text.trim()) || [];
+    message.text
+      ?.split(",")
+      .map((text) => text.trim())
+      .filter((sym) => sym !== "") || [];
 
   const invalidSymbols =
     inputSymbols.filter((sym) => !availableSymbols.includes(sym)) || [];
@@ -35,11 +45,9 @@ export const handleIncludePairs = (
   });
 
   botService.setPairsToSubscribe(validSymbols);
+  botService.setNewPumpService(message.chat.id);
 
-  botService.removePumpService(message.chat.id);
-  botService.setNewPumpService(message.chat.id, validSymbols);
-
-  sendCurrentPairs(message.chat.id, botService, "include");
+  sendCurrentPairs(message.chat.id, botService);
 
   if (invalidSymbols.length) {
     setTimeout(
@@ -48,10 +56,31 @@ export const handleIncludePairs = (
           message.chat.id,
           i18next.t("invalid-pairs", {
             invalidPairs: invalidSymbols.join(", "),
+            lng: botService.getChatConfig(message.chat.id).language,
           }),
           { parse_mode: "Markdown" as ParseMode }
         ),
       200
     );
   }
+};
+
+export const handlePercentageInput = (
+  chatId: number,
+  botService: BotService,
+  percentage: number
+) => {
+  const config = botService.getChatConfig(chatId);
+  botService.updateChatConfig(chatId, {
+    percentage,
+    isSendingPercentage: false,
+  });
+
+  botService.sendMessage(
+    chatId,
+    i18next.t("settings-saved-general", { percentage, lng: config.language }),
+    { parse_mode: "Markdown" as ParseMode }
+  );
+
+  botService.setNewPumpService(chatId);
 };

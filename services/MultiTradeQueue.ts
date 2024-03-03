@@ -49,9 +49,10 @@ class MultiTradeQueue {
 
     const now = Date.now();
     const queue = this.queues[pair].trades;
-    queue.push({ price: parseFloat(trade.p), timestamp: trade.T });
+    const newTradePrice = parseFloat(trade.p);
+    queue.push({ price: newTradePrice, timestamp: trade.T });
 
-    // // Удаляем устаревшие торговые операции из начала очереди
+    // Эффективное удаление устаревших торговых операций из начала очереди с Denque
     while (
       queue.length > 0 &&
       now - (queue.peekFront() as Trade).timestamp > this.windowSize
@@ -59,18 +60,16 @@ class MultiTradeQueue {
       queue.shift();
     }
 
-    // Обновляем startPrice только если очередь не пуста
-    if (queue.length > 0) {
-      this.queues[pair].startPrice = (queue.peekFront() as Trade).price;
+    if (newTradePrice < this.queues[pair].startPrice || queue.length === 1) {
+      this.queues[pair].startPrice = newTradePrice;
     }
 
-    // while (queue.length > 0 && now - queue[0].timestamp > this.windowSize) {
-    //   queue.shift();
-    // }
-
-    // if (queue.length > 0) {
-    //   this.queues[pair].startPrice = queue[0].price;
-    // }
+    if (
+      queue.length > 0 &&
+      this.queues[pair].startPrice !== (queue.peekFront() as Trade).price
+    ) {
+      this.queues[pair].startPrice = (queue.peekFront() as Trade).price;
+    }
   }
 
   getCurrentPriceChange(pair: string): PriceChangeInfo {

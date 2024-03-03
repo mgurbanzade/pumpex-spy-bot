@@ -15,14 +15,15 @@ import {
   handleStop,
 } from "../utils/eventHandlers";
 import { sendSettingsOptions } from "../utils/keyboardUtils";
-import { handleIncludePairs } from "../utils/textUtils";
-import { EVENTS } from "../utils/constants";
+import { handleIncludePairs, handlePercentageInput } from "../utils/textUtils";
+import { EVENTS, MAX_PERCENTAGE, MIN_PERCENTAGE } from "../utils/constants";
 
 type BotConfig = {
   language: "en" | "ru" | "ua";
   percentage: number;
   selectedPairs: string[];
   isIncludePairs: boolean;
+  isSendingPercentage: boolean;
 };
 
 export default class BotService extends EventEmitter {
@@ -46,7 +47,37 @@ export default class BotService extends EventEmitter {
       handleCallbackQuery(cbq, this)
     );
 
-    this.bot.onText(/\/settings/, (msg) => sendSettingsOptions(msg, this));
+    this.bot.onText(/\/settings/, (msg: Message) => {
+      return this.chatConfig[msg.chat.id]
+        ? sendSettingsOptions(msg, this)
+        : handleStart(msg, this);
+    });
+
+    this.bot.on("message", (msg: Message) => {
+      const config = this.chatConfig[msg.chat.id];
+      if (!config) return;
+
+      if (config.isSendingPercentage) {
+        const match = msg.text?.match(
+          /(100(\.0+)?|[0-9]|[1-9][0-9])(\.\d+)?%?/
+        );
+        const percentage = match ? parseFloat(match[0]) : 0;
+
+        if (
+          percentage &&
+          percentage >= MIN_PERCENTAGE &&
+          percentage <= MAX_PERCENTAGE
+        ) {
+          return handlePercentageInput(msg.chat.id, this, percentage);
+        }
+
+        return this.sendMessage(
+          msg.chat.id,
+          "Invalid percentage. Please enter a valid percentage."
+        );
+      }
+    });
+
     this.bot.onText(/([A-Z]{3,})+/, (msg) => {
       const config = this.chatConfig[msg.chat.id];
       if (!config) return;
@@ -61,7 +92,6 @@ export default class BotService extends EventEmitter {
     if (Object.keys(this.pumpServices).length > 0) {
       for (let key in this.pumpServices) {
         const pumpService = this.pumpServices[key];
-
         pumpService.handleMessage(message);
       }
     }
@@ -79,10 +109,9 @@ export default class BotService extends EventEmitter {
     return this.chatConfig[chatId];
   }
 
-  public setNewPumpService(chatId: number, selectedPairs: string[] = []) {
+  public setNewPumpService(chatId: number) {
     const config = this.getChatConfig(chatId);
-    const pumpConfig = { ...config, chatId, selectedPairs };
-    this.pumpServices[chatId] = new PumpService(pumpConfig, this);
+    this.pumpServices[chatId] = new PumpService({ chatId, ...config }, this);
   }
 
   public removePumpService(chatId: number) {
