@@ -21,6 +21,9 @@ i18next.init({
   debug: false,
   keySeparator: "true", // Set to true if using keys in form 'message.key'
   nsSeparator: false, // Set to true if using namespaces
+  interpolation: {
+    escapeValue: false, // Not needed for React
+  },
 });
 
 export default i18next;

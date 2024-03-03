@@ -1,5 +1,7 @@
+import EventEmitter from "events";
 import TelegramBot from "node-telegram-bot-api";
 import omit from "lodash.omit";
+import isEqual from "lodash.isequal";
 import PumpService from "./PumpService";
 
 import type {
@@ -13,25 +15,26 @@ import {
   handleStop,
 } from "../utils/eventHandlers";
 import { sendSettingsOptions } from "../utils/keyboardUtils";
-import { handleExcludePairs, handleIncludePairs } from "../utils/textUtils";
+import { handleIncludePairs, handlePercentageInput } from "../utils/textUtils";
+import { EVENTS, MAX_PERCENTAGE, MIN_PERCENTAGE } from "../utils/constants";
 
 type BotConfig = {
   language: "en" | "ru" | "ua";
-  isStopped: boolean;
   percentage: number;
   selectedPairs: string[];
-  excludedPairs: string[];
   isIncludePairs: boolean;
-  isExcludePairs: boolean;
+  isSendingPercentage: boolean;
 };
 
-export default class BotService {
+export default class BotService extends EventEmitter {
   public bot: TelegramBot;
   private chatConfig: { [key: string]: BotConfig } = {};
   private pumpServices: { [key: string]: PumpService };
   private availableSymbols: string[];
+  private pairsToSubscribe: string[] = [];
 
   constructor() {
+    super();
     this.availableSymbols = [];
     this.pumpServices = {};
     this.bot = new TelegramBot(process.env.TELEGRAM_API_TOKEN as string, {
@@ -40,22 +43,47 @@ export default class BotService {
 
     this.bot.onText(/\/start/, (msg) => handleStart(msg, this));
     this.bot.onText(/\/stop/, (msg) => handleStop(msg, this));
-
     this.bot.on("callback_query", (cbq: CallbackQuery) =>
       handleCallbackQuery(cbq, this)
     );
 
-    this.bot.onText(/\/settings/, (msg) => sendSettingsOptions(msg, this));
+    this.bot.onText(/\/settings/, (msg: Message) => {
+      return this.chatConfig[msg.chat.id]
+        ? sendSettingsOptions(msg, this)
+        : handleStart(msg, this);
+    });
+
+    this.bot.on("message", (msg: Message) => {
+      const config = this.chatConfig[msg.chat.id];
+      if (!config) return;
+
+      if (config.isSendingPercentage) {
+        const match = msg.text?.match(
+          /(100(\.0+)?|[0-9]|[1-9][0-9])(\.\d+)?%?/
+        );
+        const percentage = match ? parseFloat(match[0]) : 0;
+
+        if (
+          percentage &&
+          percentage >= MIN_PERCENTAGE &&
+          percentage <= MAX_PERCENTAGE
+        ) {
+          return handlePercentageInput(msg.chat.id, this, percentage);
+        }
+
+        return this.sendMessage(
+          msg.chat.id,
+          "Invalid percentage. Please enter a valid percentage."
+        );
+      }
+    });
+
     this.bot.onText(/([A-Z]{3,})+/, (msg) => {
       const config = this.chatConfig[msg.chat.id];
       if (!config) return;
 
       if (config.isIncludePairs) {
         return handleIncludePairs(msg, this);
-      }
-
-      if (config.isExcludePairs) {
-        return handleExcludePairs(msg, this);
       }
     });
   }
@@ -64,7 +92,6 @@ export default class BotService {
     if (Object.keys(this.pumpServices).length > 0) {
       for (let key in this.pumpServices) {
         const pumpService = this.pumpServices[key];
-
         pumpService.handleMessage(message);
       }
     }
@@ -74,18 +101,17 @@ export default class BotService {
     this.chatConfig[chatId] = { ...this.chatConfig[chatId], ...config };
   }
 
+  public removeChatConfig(chatId: number) {
+    this.chatConfig = omit(this.chatConfig, chatId);
+  }
+
   public getChatConfig(chatId: number): BotConfig {
     return this.chatConfig[chatId];
   }
 
-  public setNewPumpService(
-    chatId: number,
-    selectedPairs: string[] = [],
-    excludedPairs: string[] = []
-  ) {
+  public setNewPumpService(chatId: number) {
     const config = this.getChatConfig(chatId);
-    const pumpConfig = { ...config, chatId };
-    this.pumpServices[chatId] = new PumpService(pumpConfig, this);
+    this.pumpServices[chatId] = new PumpService({ chatId, ...config }, this);
   }
 
   public removePumpService(chatId: number) {
@@ -98,6 +124,16 @@ export default class BotService {
 
   public getAvailableSymbols() {
     return this.availableSymbols;
+  }
+
+  public setPairsToSubscribe(pairs: string[]) {
+    const uniquePairs = new Set([...this.pairsToSubscribe, ...pairs]);
+    const uniquePairsArray = Array.from(uniquePairs);
+
+    if (isEqual(uniquePairsArray, this.pairsToSubscribe)) return;
+
+    this.pairsToSubscribe = Array.from(uniquePairs);
+    this.emit(EVENTS.SUBSCRIPTIONS_UPDATED, this.pairsToSubscribe);
   }
 
   public sendMessage(

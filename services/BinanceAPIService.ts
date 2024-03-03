@@ -1,8 +1,11 @@
 import EventEmitter from "events";
 import WebSocket from "ws";
+import throttle from "lodash.throttle";
+import { EVENTS } from "../utils/constants";
 
 class BinanceAPIService extends EventEmitter {
   private symbols: string[] = [];
+  private connections: WebSocket[] = [];
 
   constructor() {
     super();
@@ -11,7 +14,6 @@ class BinanceAPIService extends EventEmitter {
 
   private async initialize(): Promise<void> {
     await this.fetchSymbols();
-    this.subscribeToStreams();
   }
 
   private async fetchSymbols() {
@@ -26,7 +28,7 @@ class BinanceAPIService extends EventEmitter {
           .filter((item: Record<string, any>) => item.status === "TRADING")
           .map((item: any) => item.symbol);
 
-        this.emit("symbolsFetched", this.symbols);
+        this.emit(EVENTS.SYMBOLS_FETCHED, this.symbols);
       }
     } catch (error) {
       console.error("Something went wrong. Try again later");
@@ -34,9 +36,16 @@ class BinanceAPIService extends EventEmitter {
     }
   }
 
-  private async subscribeToStreams() {
+  public async subscribeToStreams(symbols: string[]) {
+    console.log("Closing all existing connections");
+    this.closeAllConnections();
+
     const groupSize = 50;
-    const groupsOfPairs = this.splitIntoGroups(this.symbols, groupSize);
+    const groupsOfPairs = this.splitIntoGroups(symbols, groupSize);
+    const handleMessage = (data: Record<string, any>) => {
+      const message = JSON.parse(data as any);
+      this.emit(EVENTS.MESSAGE_RECEIVED, message);
+    };
 
     groupsOfPairs.forEach((pairsGroup, index) => {
       const streams = pairsGroup.map(
@@ -45,15 +54,13 @@ class BinanceAPIService extends EventEmitter {
       const params = streams.join("/");
       const wsUrl = `wss://fstream.binance.com/stream?streams=${params}`;
       const wSocket = new WebSocket(wsUrl);
+      this.connections.push(wSocket);
 
       wSocket.on("open", () => {
-        console.log(`WebSocket connection established for group ${index + 1}`);
+        console.log(`WebSocket connection established for group ${pairsGroup}`);
       });
 
-      wSocket.on("message", (data) => {
-        const message = JSON.parse(data as any);
-        this.emit("messageReceived", message);
-      });
+      wSocket.on("message", handleMessage);
 
       wSocket.on("error", (error) => {
         console.log("WebSocket error: " + error.message);
@@ -73,6 +80,14 @@ class BinanceAPIService extends EventEmitter {
 
   public getSymbols() {
     return this.symbols;
+  }
+
+  private closeAllConnections() {
+    this.connections.forEach((connection) => {
+      connection.close();
+    });
+
+    this.connections = [];
   }
 }
 

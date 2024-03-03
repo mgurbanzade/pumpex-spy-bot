@@ -1,49 +1,55 @@
 import i18n from "../i18n";
+import type BotService from "./BotService";
 import MultiTradeQueue from "./MultiTradeQueue";
-import type TelegramBot from "node-telegram-bot-api";
+import { getBinanceFuturesURL } from "../utils/constants";
 
 type Config = {
   language: "en" | "ru" | "ua";
   percentage: number;
   chatId: number;
-  excludedPairs: string[];
   selectedPairs: string[];
 };
 
 class PumpService {
-  private bot: TelegramBot;
+  private botService: BotService;
   private config: Config;
   private multiTradeQueue: MultiTradeQueue;
 
-  constructor(config: Config, bot: any) {
-    this.bot = bot;
+  constructor(config: Config, botService: BotService) {
+    this.botService = botService;
     this.config = config;
     this.multiTradeQueue = new MultiTradeQueue(config.percentage);
   }
 
-  public handleMessage = (message: any) => {
-    const stream = message.stream; // stream name
-    const pair = stream.split("@")[0]; // pair name
-    const excludedPairs = this.config.excludedPairs;
+  public handleMessage = async (message: any) => {
+    const stream = message.stream;
+    const pair = stream.split("@")[0].toUpperCase();
     const selectedPairs = this.config.selectedPairs;
-
-    if (excludedPairs?.length && excludedPairs.includes(pair)) return;
     if (selectedPairs?.length && !selectedPairs?.includes(pair)) return;
-
     const trade = message.data;
-    this.multiTradeQueue.addTrade(pair, trade); // Добавляем сделку в соответствующую очередь
+
+    this.multiTradeQueue.addTrade(pair, trade);
     const checkResult = this.multiTradeQueue.checkAndLogSignificantPump(pair);
 
     if (checkResult !== null) {
-      const { pair, startPrice, lastPrice, diff } = checkResult;
+      const lng = this.config.language;
+      const { pair, startPrice, lastPrice, diff, totalPumps } = checkResult;
+      const link = getBinanceFuturesURL(lng, pair);
+
       const message = i18n.t("pump-detected", {
-        pair,
+        pair: `[${pair}](${link})`,
+        link,
         startPrice,
         lastPrice,
         diff,
+        totalPumps,
+        lng,
       });
 
-      this.bot.sendMessage(this.config.chatId, message);
+      this.botService.sendMessage(this.config.chatId, message, {
+        parse_mode: "Markdown",
+        disable_web_page_preview: true,
+      });
     }
   };
 }
