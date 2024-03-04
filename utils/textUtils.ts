@@ -2,6 +2,7 @@ import i18next from "../i18n";
 import type BotService from "../services/BotService";
 import type { Message, ParseMode } from "node-telegram-bot-api";
 import { sendCurrentPairs } from "./eventHandlers";
+import { MAX_PERCENTAGE, MIN_PERCENTAGE } from "./constants";
 
 export const sendSelectPairs = (chatId: number, botService: BotService) => {
   const options = {
@@ -26,7 +27,6 @@ export const handleIncludePairs = (
   botService: BotService
 ) => {
   const availableSymbols = botService.getAvailableSymbols();
-
   const inputSymbols =
     message.text
       ?.split(",")
@@ -66,21 +66,35 @@ export const handleIncludePairs = (
 };
 
 export const handlePercentageInput = (
-  chatId: number,
-  botService: BotService,
-  percentage: number
+  message: Message,
+  botService: BotService
 ) => {
-  const config = botService.getChatConfig(chatId);
-  botService.updateChatConfig(chatId, {
-    percentage,
-    isSendingPercentage: false,
-  });
+  const config = botService.getChatConfig(message.chat.id);
+  const match = message.text?.match(/(100(\.0+)?|[0-9]|[1-9][0-9])(\.\d+)?%?/);
+  const percentage = match ? parseFloat(match[0]) : 0;
 
-  botService.sendMessage(
-    chatId,
-    i18next.t("settings-saved-general", { percentage, lng: config.language }),
+  if (
+    percentage &&
+    percentage >= MIN_PERCENTAGE &&
+    percentage <= MAX_PERCENTAGE
+  ) {
+    botService.updateChatConfig(message.chat.id, {
+      percentage,
+      isSendingPercentage: false,
+    });
+
+    botService.sendMessage(
+      message.chat.id,
+      i18next.t("settings-saved-general", { percentage, lng: config.language }),
+      { parse_mode: "Markdown" as ParseMode }
+    );
+
+    return botService.setNewPumpService(message.chat.id);
+  }
+
+  return botService.sendMessage(
+    message.chat.id,
+    i18next.t("invalid-percentage", { lng: config.language }),
     { parse_mode: "Markdown" as ParseMode }
   );
-
-  botService.setNewPumpService(chatId);
 };

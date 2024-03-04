@@ -14,9 +14,13 @@ import {
   handleStart,
   handleStop,
 } from "../utils/eventHandlers";
-import { sendSettingsOptions } from "../utils/keyboardUtils";
+import {
+  sendExchangesOptions,
+  sendSettingsOptions,
+} from "../utils/keyboardUtils";
 import { handleIncludePairs, handlePercentageInput } from "../utils/textUtils";
-import { EVENTS, MAX_PERCENTAGE, MIN_PERCENTAGE } from "../utils/constants";
+import { EVENTS } from "../utils/constants";
+import type { AdaptedMessage } from "../utils/adapters";
 
 type BotConfig = {
   language: "en" | "ru" | "ua";
@@ -58,23 +62,7 @@ export default class BotService extends EventEmitter {
       if (!config) return;
 
       if (config.isSendingPercentage) {
-        const match = msg.text?.match(
-          /(100(\.0+)?|[0-9]|[1-9][0-9])(\.\d+)?%?/
-        );
-        const percentage = match ? parseFloat(match[0]) : 0;
-
-        if (
-          percentage &&
-          percentage >= MIN_PERCENTAGE &&
-          percentage <= MAX_PERCENTAGE
-        ) {
-          return handlePercentageInput(msg.chat.id, this, percentage);
-        }
-
-        return this.sendMessage(
-          msg.chat.id,
-          "Invalid percentage. Please enter a valid percentage."
-        );
+        return handlePercentageInput(msg, this);
       }
     });
 
@@ -88,7 +76,7 @@ export default class BotService extends EventEmitter {
     });
   }
 
-  public handleMessage = (message: Message) => {
+  public handleMessage = (message: AdaptedMessage) => {
     if (Object.keys(this.pumpServices).length > 0) {
       for (let key in this.pumpServices) {
         const pumpService = this.pumpServices[key];
@@ -96,6 +84,10 @@ export default class BotService extends EventEmitter {
       }
     }
   };
+
+  public unsubscribeFromExchange(chatId: number, exchange: string) {
+    this.pumpServices[chatId].unsubscribeFromExchange(exchange);
+  }
 
   public updateChatConfig(chatId: number, config: Partial<BotConfig>) {
     this.chatConfig[chatId] = { ...this.chatConfig[chatId], ...config };
@@ -119,7 +111,7 @@ export default class BotService extends EventEmitter {
   }
 
   public setAvailableSymbols(symbols: string[]) {
-    this.availableSymbols = symbols;
+    this.availableSymbols = [...this.availableSymbols, ...symbols];
   }
 
   public getAvailableSymbols() {
@@ -128,12 +120,39 @@ export default class BotService extends EventEmitter {
 
   public setPairsToSubscribe(pairs: string[]) {
     const uniquePairs = new Set([...this.pairsToSubscribe, ...pairs]);
-    const uniquePairsArray = Array.from(uniquePairs);
-
-    if (isEqual(uniquePairsArray, this.pairsToSubscribe)) return;
 
     this.pairsToSubscribe = Array.from(uniquePairs);
     this.emit(EVENTS.SUBSCRIPTIONS_UPDATED, this.pairsToSubscribe);
+  }
+
+  public checkAndRemoveUselessSubscriptions(chatId: number) {
+    const uselessSubscriptions = new Set(this.chatConfig[chatId].selectedPairs);
+
+    const allOtherPairs = new Set<string>();
+    Object.keys(this.chatConfig).forEach((id) => {
+      if (parseInt(id) !== chatId) {
+        this.chatConfig[id].selectedPairs.forEach((pair) =>
+          allOtherPairs.add(pair)
+        );
+      }
+    });
+
+    const subscriptionsToRemove = Array.from(uselessSubscriptions).filter(
+      (pair) => !allOtherPairs.has(pair)
+    );
+
+    const updatedSubscriptions = this.pairsToSubscribe.filter(
+      (pair) => !subscriptionsToRemove.includes(pair)
+    );
+
+    console.log(
+      "User from chat",
+      chatId,
+      "stopped the bot. Removing subscriptions: ",
+      subscriptionsToRemove
+    );
+
+    this.emit(EVENTS.SUBSCRIPTIONS_UPDATED, updatedSubscriptions);
   }
 
   public sendMessage(

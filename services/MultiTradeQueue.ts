@@ -1,5 +1,6 @@
 import Denque from "denque";
 import { DEFAULT_MULTIPLIER, WINDOW_SIZE_MS } from "../utils/constants";
+import type { AdaptedMessage } from "../utils/adapters";
 
 interface Trade {
   price: number;
@@ -31,7 +32,7 @@ class MultiTradeQueue {
     string,
     { priceChange: number; timestamp: number }
   > = {};
-  private pumpsCount: Record<string, number> = {}; // Новый словарь для подсчета значительных пампов
+  private pumpsCount: Record<string, number> = {};
   private readonly windowSize: number = WINDOW_SIZE_MS; // 5 minutes
   private readonly percentage: number;
 
@@ -39,20 +40,21 @@ class MultiTradeQueue {
     this.percentage = percentage;
   }
 
-  addTrade(pair: string, trade: { p: string; T: number }): void {
+  addTrade(message: AdaptedMessage): void {
+    const { pair, trade } = message;
+
     if (!this.queues[pair]) {
       this.queues[pair] = {
         trades: new Denque<Trade>(),
-        startPrice: parseFloat(trade.p),
+        startPrice: parseFloat(trade.price),
       };
     }
 
     const now = Date.now();
     const queue = this.queues[pair].trades;
-    const newTradePrice = parseFloat(trade.p);
-    queue.push({ price: newTradePrice, timestamp: trade.T });
+    const newTradePrice = parseFloat(trade.price);
+    queue.push({ price: newTradePrice, timestamp: trade.timestamp });
 
-    // Эффективное удаление устаревших торговых операций из начала очереди с Denque
     while (
       queue.length > 0 &&
       now - (queue.peekFront() as Trade).timestamp > this.windowSize

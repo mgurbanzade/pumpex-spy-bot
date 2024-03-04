@@ -15,14 +15,13 @@ i18next.init({
       translation: ua,
     },
   },
-  // Set the default language
   lng: "en",
   fallbackLng: "en",
   debug: false,
-  keySeparator: "true", // Set to true if using keys in form 'message.key'
-  nsSeparator: false, // Set to true if using namespaces
+  keySeparator: "true",
+  nsSeparator: false,
   interpolation: {
-    escapeValue: false, // Not needed for React
+    escapeValue: false,
   },
 });
 

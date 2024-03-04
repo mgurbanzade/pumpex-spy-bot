@@ -1,6 +1,5 @@
 import EventEmitter from "events";
 import WebSocket from "ws";
-import throttle from "lodash.throttle";
 import { EVENTS } from "../utils/constants";
 
 class BinanceAPIService extends EventEmitter {

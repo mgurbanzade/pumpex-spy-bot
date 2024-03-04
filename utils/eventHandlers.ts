@@ -1,9 +1,9 @@
 import i18next from "../i18n";
 import { saveLanguage, sendSelectLanguages } from "./languageUtils";
-import { sendPercentageOptions } from "./keyboardUtils";
+import { sendExchangesOptions, sendPercentageOptions } from "./keyboardUtils";
 import type { CallbackQuery, Message, ParseMode } from "node-telegram-bot-api";
 import type BotService from "../services/BotService";
-import { DEFAULT_LANGUAGE, DEFAULT_PERCENTAGE, PERCENTAGES } from "./constants";
+import { DEFAULT_LANGUAGE, DEFAULT_PERCENTAGE } from "./constants";
 import { sendSelectPairs } from "./textUtils";
 
 export const handleStart = (msg: Message, botService: BotService) => {
@@ -47,8 +47,26 @@ export const handleStop = (msg: Message, botService: BotService) => {
   const lng =
     botService.getChatConfig(msg.chat.id)?.language || DEFAULT_LANGUAGE;
   botService.removePumpService(msg.chat.id);
+  botService.checkAndRemoveUselessSubscriptions(msg.chat.id);
   botService.removeChatConfig(msg.chat.id);
   botService.sendMessage(msg.chat.id, i18next.t("stopped", { lng }));
+};
+
+export const handleStopExchanges = (
+  msg: Message,
+  botService: BotService,
+  data: string
+) => {
+  const config = botService.getChatConfig(msg.chat.id);
+  if (!config) return;
+
+  botService.unsubscribeFromExchange(msg.chat.id, data);
+  botService.sendMessage(
+    msg.chat.id,
+    i18next.t("settings-saved", {
+      lng: config.language,
+    })
+  );
 };
 
 export const handleCallbackQuery = (
@@ -67,6 +85,13 @@ export const handleCallbackQuery = (
       break;
     case "select-language":
       sendSelectLanguages(message.chat.id, botService);
+      break;
+    case "stop-exchanges":
+      sendExchangesOptions(message.chat.id, botService);
+      return;
+    case "binance":
+    case "bybit":
+      handleStopExchanges(message, botService, data);
       break;
     case "en":
     case "ru":
