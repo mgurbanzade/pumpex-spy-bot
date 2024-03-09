@@ -19,6 +19,7 @@ class BybitAPIService extends EventEmitter {
     try {
       const response = await fetch(`https://api.bybit.com/v2/public/symbols`);
       const data = (await response.json()) as Record<string, any>;
+      if (!data) console.log("no data");
 
       if (data?.result) {
         this.symbols = data.result
@@ -30,6 +31,8 @@ class BybitAPIService extends EventEmitter {
           .map((item: any) => item.name);
 
         this.emit(EVENTS.SYMBOLS_FETCHED, this.symbols);
+      } else {
+        console.log("No symbols found on Bybit");
       }
     } catch (error) {
       console.error("Something went wrong. Try again later");
@@ -38,7 +41,7 @@ class BybitAPIService extends EventEmitter {
   }
 
   public async subscribeToStreams(symbols: string[]) {
-    console.log("Closing all existing connections");
+    console.log("Closing all existing connections on Bybit");
     this.closeAllConnections();
 
     if (!symbols.length) return;
@@ -63,7 +66,9 @@ class BybitAPIService extends EventEmitter {
         console.log(error);
       }
 
-      console.log(`WebSocket connection established for group ${symbols}`);
+      console.log(
+        `WebSocket connection established on Bybit for group ${symbols}`
+      );
     });
 
     wSocket.on("message", handleMessage);

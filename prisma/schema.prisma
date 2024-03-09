@@ -1,0 +1,44 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model ChatConfig {
+  id               String    @id @default(auto()) @map("_id") @db.ObjectId
+  chatId           Int       @unique
+  username         String?
+  language         Language
+  percentage       Float
+  selectedPairs    String[]
+  stoppedExchanges String[]
+  windowSize       Int
+  state            ChatState
+}
+
+enum Language {
+  EN
+  RU
+  UA
+}
+
+enum ChatState {
+  START
+  SETTINGS
+  SELECT_PAIRS
+  SELECT_PERCENTAGE
+  SELECT_WINDOW_SIZE
+  CHANGE_LANGUAGE
+  UNSUBSCRIBE_EXCHANGES
+  SEARCHING
+  STOPPED
+}

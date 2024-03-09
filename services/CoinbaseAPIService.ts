@@ -1,8 +1,8 @@
 import EventEmitter from "events";
 import WebSocket from "ws";
-import { EVENTS } from "../utils/constants";
+import { DISABLED_PAIRS, EVENTS } from "../utils/constants";
 
-class BinanceAPIService extends EventEmitter {
+class CoinbaseAPIService extends EventEmitter {
   private symbols: string[] = [];
   private connections: WebSocket[] = [];
 
@@ -18,20 +18,24 @@ class BinanceAPIService extends EventEmitter {
   private async fetchSymbols() {
     try {
       const response = await fetch(
-        `https://api.binance.com/api/v3/exchangeInfo`
+        `https://api.exchange.coinbase.com/products`
       );
       const data = (await response.json()) as Record<string, any>;
-
       if (!data) console.log("no data");
 
-      if (data?.symbols) {
-        this.symbols = data.symbols
-          .filter((item: Record<string, any>) => item.status === "TRADING")
-          .map((item: any) => item.symbol);
+      if (data) {
+        this.symbols = data
+          .filter((item: Record<string, any>) => {
+            return (
+              item.status === "online" &&
+              !DISABLED_PAIRS.includes(item.display_name)
+            );
+          })
+          .map((item: any) => item.display_name);
 
         this.emit(EVENTS.SYMBOLS_FETCHED, this.symbols);
       } else {
-        console.log("No symbols found on Binance");
+        console.log("No symbols found on Coinbase");
       }
     } catch (error) {
       console.error("Something went wrong. Try again later");
@@ -40,28 +44,47 @@ class BinanceAPIService extends EventEmitter {
   }
 
   public async subscribeToStreams(symbols: string[]) {
-    console.log("Closing all existing connections on Binance");
+    if (!symbols.length) return;
+    console.log("Closing all existing connections on Coinbase");
     this.closeAllConnections();
-
     const groupSize = 50;
     const groupsOfPairs = this.splitIntoGroups(symbols, groupSize);
     const handleMessage = (data: Record<string, any>) => {
       const message = JSON.parse(data as any);
+
+      if (message.type === "error") {
+        console.log(message.message + " reason: " + message.reason);
+      }
+
       this.emit(EVENTS.MESSAGE_RECEIVED, message);
     };
 
     groupsOfPairs.forEach((pairsGroup, index) => {
-      const streams = pairsGroup.map(
-        (pair) => `${pair.toLowerCase()}@aggTrade`
-      );
-      const params = streams.join("/");
-      const wsUrl = `wss://fstream.binance.com/stream?streams=${params}`;
-      const wSocket = new WebSocket(wsUrl);
+      const wsUrl = `wss://ws-feed.pro.coinbase.com`;
+      const wSocket = new WebSocket(wsUrl, {
+        perMessageDeflate: true,
+        maxPayload: 1024 * 1024 * 2,
+      });
+
       this.connections.push(wSocket);
 
       wSocket.on("open", () => {
+        try {
+          const res = wSocket.send(
+            JSON.stringify({
+              type: "subscribe",
+              channels: [
+                { name: "matches", product_ids: pairsGroup },
+                { name: "heartbeat", product_ids: pairsGroup },
+              ],
+            })
+          );
+        } catch (error) {
+          console.log(error);
+        }
+
         console.log(
-          `WebSocket connection established on Binance for group ${pairsGroup}`
+          `WebSocket connection established on Coinbase for group ${pairsGroup}`
         );
       });
 
@@ -71,6 +94,10 @@ class BinanceAPIService extends EventEmitter {
         console.log("WebSocket error: " + error.message);
       });
     });
+  }
+
+  public getSymbols() {
+    return this.symbols;
   }
 
   private splitIntoGroups(arr: string[], groupSize: number) {
@@ -83,10 +110,6 @@ class BinanceAPIService extends EventEmitter {
     return groups;
   }
 
-  public getSymbols() {
-    return this.symbols;
-  }
-
   private closeAllConnections() {
     this.connections.forEach((connection) => {
       connection.close();
@@ -96,4 +119,4 @@ class BinanceAPIService extends EventEmitter {
   }
 }
 
-export default BinanceAPIService;
+export default CoinbaseAPIService;

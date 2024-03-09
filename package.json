@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "bun ./index.ts",
     "build": "bun build ./index.ts --outdir ./build --target=bun",
-    "start": "bun ./build/index.js"
+    "start": "bun ./build/index.js",
+    "db:create": "prisma db push"
   },
   "devDependencies": {
     "@types/bun": "latest",
@@ -16,13 +17,14 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
+    "@prisma/client": "5.10.2",
     "@types/i18next": "^13.0.0",
     "@types/lodash.isequal": "^4.5.8",
     "@types/lodash.omit": "^4.5.9",
     "@types/lodash.throttle": "^4.1.9",
+    "@types/mongodb": "^4.0.7",
     "@types/ws": "^8.5.10",
     "axios": "^1.6.7",
-    "crypto": "^1.0.1",
     "denque": "^2.1.0",
     "events": "^3.3.0",
     "i18next": "^23.10.0",
@@ -31,6 +33,7 @@
     "lodash.throttle": "^4.1.1",
     "luxon": "^3.4.4",
     "node-telegram-bot-api": "^0.64.0",
+    "prisma": "^5.10.2",
     "ws": "^8.16.0"
   }
 }
