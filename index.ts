@@ -1,3 +1,5 @@
+import Queue, { type Job } from "bull";
+
 import ConfigService from "./services/ConfigService";
 import BotService from "./services/BotService";
 import BinanceAPIService from "./services/BinanceAPIService";
@@ -9,7 +11,52 @@ import {
   adaptCoinbaseMessage,
 } from "./utils/adapters";
 import CoinbaseAPIService from "./services/CoinbaseAPIService";
-import type { ChatConfig } from "./types";
+import type {
+  BinanceAggTradeMessage,
+  BybitTradeMessage,
+  ChatConfig,
+  CoinbaseTradeData,
+} from "./types";
+
+const messageQueue = new Queue("messageProcessing", {
+  redis: {
+    host: "localhost",
+    port: 6379,
+  },
+});
+
+const processMessage = async ({ data }: Job) => {
+  const platform = data.platform;
+  const message = data.message;
+
+  const adaptDisaptcher = {
+    binance: adaptBinanceMessage,
+    bybit: adaptBybitMessage,
+    coinbase: adaptCoinbaseMessage,
+  };
+
+  const adaptMessage =
+    adaptDisaptcher[platform as "binance" | "bybit" | "coinbase"];
+  const adaptedMessage = adaptMessage(message);
+  bot.handleMessage(adaptedMessage);
+  return;
+};
+
+messageQueue.process((job, done) => {
+  processMessage(job)
+    .then((result) => done(null, result))
+    .catch((err) => done(err));
+});
+
+const addMessageToQueue = (
+  message: BinanceAggTradeMessage | BybitTradeMessage | CoinbaseTradeData,
+  platform: "binance" | "bybit" | "coinbase"
+) => {
+  messageQueue.add({
+    message: message,
+    platform,
+  });
+};
 
 const bybit = new BybitAPIService();
 const binance = new BinanceAPIService();
@@ -51,20 +98,17 @@ Promise.all([
 });
 
 binance.on(EVENTS.MESSAGE_RECEIVED, (message) => {
-  const adaptedMessage = adaptBinanceMessage(message);
-  bot.handleMessage(adaptedMessage);
+  addMessageToQueue(message, "binance");
 });
 
 bybit.on(EVENTS.MESSAGE_RECEIVED, (message) => {
   if (!message || !message.data) return;
-  const adaptedMessage = adaptBybitMessage(message);
-  bot.handleMessage(adaptedMessage);
+  addMessageToQueue(message, "bybit");
 });
 
 coinbase.on(EVENTS.MESSAGE_RECEIVED, (message) => {
   if (!message || message.type !== "match") return;
-  const adaptedMessage = adaptCoinbaseMessage(message);
-  bot.handleMessage(adaptedMessage);
+  addMessageToQueue(message, "coinbase");
 });
 
 bot.on(EVENTS.SUBSCRIPTIONS_UPDATED, (symbols: string[]) => {
