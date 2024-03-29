@@ -1,8 +1,9 @@
+import { DateTime } from "luxon";
 import EventEmitter from "events";
 import TelegramBot from "node-telegram-bot-api";
 import omit from "lodash.omit";
-import isEqual from "lodash.isequal";
 import PumpService from "./PumpService";
+import type { ChatConfig, WalletWebhookMessage } from "../types";
 
 import type {
   Message,
@@ -10,99 +11,138 @@ import type {
   SendMessageOptions,
 } from "node-telegram-bot-api";
 import {
+  handleSelectPairsInput,
+  handlePercentageInput,
   handleCallbackQuery,
   handleStart,
   handleStop,
-} from "../utils/eventHandlers";
-import {
-  sendExchangesOptions,
-  sendSettingsOptions,
-} from "../utils/keyboardUtils";
-import { handleIncludePairs, handlePercentageInput } from "../utils/textUtils";
-import { EVENTS } from "../utils/constants";
-import type { AdaptedMessage } from "../utils/adapters";
+  handleSelectWindowSizeInput,
+} from "../utils/handlers";
 
-type BotConfig = {
-  language: "en" | "ru" | "ua";
-  percentage: number;
-  selectedPairs: string[];
-  isIncludePairs: boolean;
-  isSendingPercentage: boolean;
-};
+import { EVENTS } from "../utils/constants";
+import { sendPaymentSuccess, sendSettingsOptions } from "../utils/senders";
+import type ConfigService from "./ConfigService";
+import { ChatState, type AdaptedMessage } from "../types";
+import type { Prisma } from "@prisma/client";
+import { fetchInvoice, isSubscriptionValid } from "../utils/payments";
+import Bottleneck from "bottleneck";
 
 export default class BotService extends EventEmitter {
+  private limiter: Bottleneck;
+  public config: ConfigService;
   public bot: TelegramBot;
-  private chatConfig: { [key: string]: BotConfig } = {};
   private pumpServices: { [key: string]: PumpService };
   private availableSymbols: string[];
   private pairsToSubscribe: string[] = [];
 
-  constructor() {
+  constructor(config: ConfigService) {
     super();
+    this.config = config;
     this.availableSymbols = [];
     this.pumpServices = {};
-    this.bot = new TelegramBot(process.env.TELEGRAM_API_TOKEN as string, {
+
+    this.limiter = new Bottleneck({
+      reservoir: 25,
+      reservoirRefreshAmount: 25,
+      reservoirRefreshInterval: 1000,
+      maxConcurrent: 1,
+      minTime: 40,
+    });
+    this.bot = new TelegramBot(process.env.TELEGRAM_API_PROD_TOKEN as string, {
       polling: true,
     });
 
     this.bot.onText(/\/start/, (msg) => handleStart(msg, this));
     this.bot.onText(/\/stop/, (msg) => handleStop(msg, this));
+    this.bot.onText(/\/settings/, (msg: Message) => {
+      const config = this.getChatConfig(msg.chat.id);
+      return config ? sendSettingsOptions(msg, this) : handleStart(msg, this);
+    });
+
     this.bot.on("callback_query", (cbq: CallbackQuery) =>
       handleCallbackQuery(cbq, this)
     );
 
-    this.bot.onText(/\/settings/, (msg: Message) => {
-      return this.chatConfig[msg.chat.id]
-        ? sendSettingsOptions(msg, this)
-        : handleStart(msg, this);
-    });
-
     this.bot.on("message", (msg: Message) => {
-      const config = this.chatConfig[msg.chat.id];
+      const config = this.getChatConfig(msg.chat.id);
       if (!config) return;
 
-      if (config.isSendingPercentage) {
+      if (config.state === ChatState.SELECT_PERCENTAGE) {
         return handlePercentageInput(msg, this);
+      }
+
+      if (config.state === ChatState.SELECT_WINDOW_SIZE) {
+        return handleSelectWindowSizeInput(msg, this);
       }
     });
 
     this.bot.onText(/([A-Z]{3,})+/, (msg) => {
-      const config = this.chatConfig[msg.chat.id];
+      const config = this.getChatConfig(msg.chat.id);
       if (!config) return;
 
-      if (config.isIncludePairs) {
-        return handleIncludePairs(msg, this);
+      if (config.state === ChatState.SELECT_PAIRS) {
+        return handleSelectPairsInput(msg, this);
       }
     });
   }
 
-  public handleMessage = (message: AdaptedMessage) => {
+  public async initialize() {
+    const chatConfigs = this.config.getAll();
+
+    for (let chatId in chatConfigs) {
+      const chatConfig = chatConfigs[chatId];
+      this.pumpServices[chatId] = new PumpService(
+        { ...chatConfig, chatId: Number(chatId) },
+        this
+      );
+    }
+  }
+
+  public handleMessage(message: AdaptedMessage) {
     if (Object.keys(this.pumpServices).length > 0) {
       for (let key in this.pumpServices) {
+        const chatConfig = this.getChatConfig(Number(key));
+        if (!chatConfig) {
+          console.log("Chat config not found for chatId", key);
+          continue;
+        }
+
+        const isActiveSubscription = isSubscriptionValid(
+          chatConfig.paidUntil as string
+        );
+        const isChatStopped = chatConfig?.state === ChatState.STOPPED;
+        const isExchangeStopped = chatConfig?.stoppedExchanges.includes(
+          message.platform.toLowerCase()
+        );
+
+        if (isExchangeStopped || isChatStopped || !isActiveSubscription)
+          continue;
+
         const pumpService = this.pumpServices[key];
         pumpService.handleMessage(message);
       }
     }
-  };
-
-  public unsubscribeFromExchange(chatId: number, exchange: string) {
-    this.pumpServices[chatId].unsubscribeFromExchange(exchange);
   }
 
-  public updateChatConfig(chatId: number, config: Partial<BotConfig>) {
-    this.chatConfig[chatId] = { ...this.chatConfig[chatId], ...config };
+  public async createChatConfig(config: Prisma.ChatConfigCreateInput) {
+    const res = await this.config.createChatConfig(config);
+    return res;
   }
 
-  public removeChatConfig(chatId: number) {
-    this.chatConfig = omit(this.chatConfig, chatId);
+  public updateChatConfig(
+    chatId: number,
+    config: Partial<Prisma.ChatConfigUpdateInput>
+  ) {
+    return this.config.set(chatId, config);
   }
 
-  public getChatConfig(chatId: number): BotConfig {
-    return this.chatConfig[chatId];
+  public getChatConfig(chatId: number): ChatConfig {
+    return this.config.get(chatId);
   }
 
   public setNewPumpService(chatId: number) {
     const config = this.getChatConfig(chatId);
+
     this.pumpServices[chatId] = new PumpService({ chatId, ...config }, this);
   }
 
@@ -126,12 +166,15 @@ export default class BotService extends EventEmitter {
   }
 
   public checkAndRemoveUselessSubscriptions(chatId: number) {
-    const uselessSubscriptions = new Set(this.chatConfig[chatId].selectedPairs);
+    const allConfigs = this.config.getAll();
+    const chatConfig = this.getChatConfig(chatId);
+    const uselessSubscriptions = new Set(chatConfig?.selectedPairs);
 
     const allOtherPairs = new Set<string>();
-    Object.keys(this.chatConfig).forEach((id) => {
+
+    Object.keys(allConfigs).forEach((id) => {
       if (parseInt(id) !== chatId) {
-        this.chatConfig[id].selectedPairs.forEach((pair) =>
+        allConfigs[id as any].selectedPairs.forEach((pair) =>
           allOtherPairs.add(pair)
         );
       }
@@ -155,11 +198,84 @@ export default class BotService extends EventEmitter {
     this.emit(EVENTS.SUBSCRIPTIONS_UPDATED, updatedSubscriptions);
   }
 
-  public sendMessage(
+  public handlePaymentSuccess = async (invoiceId: string) => {
+    const invoiceData: any = await fetchInvoice(invoiceId);
+    const invoice = invoiceData?.result[0];
+    const invoiceExpiresAt = DateTime.fromJSDate(new Date(invoice.expiry_date));
+    const subscriptionExpiresAt = invoiceExpiresAt.plus({ days: 30 });
+
+    if (invoiceData?.status === "success" && invoice.status === "paid") {
+      const chatId = invoice.order_id;
+      this.updateChatConfig(Number(chatId), {
+        paidUntil: subscriptionExpiresAt.toISO(),
+        state: ChatState.SEARCHING,
+      });
+
+      sendPaymentSuccess(
+        Number(chatId),
+        this,
+        subscriptionExpiresAt.toFormat("dd.MM.yyyy")
+      );
+    }
+  };
+
+  // public handleBinancePaySuccess = async (data: any) => {
+  //   const transactTime = DateTime.fromJSDate(new Date(data?.transactTime));
+  //   const subscriptionExpiresAt = transactTime.plus({ days: 30 });
+  //   const chatId = data?.merchantTradeNo?.split("date")[0];
+
+  //   const chatConfig = this.getChatConfig(Number(chatId));
+
+  //   if (isSubscriptionValid(chatConfig.paidUntil)) return;
+
+  //   this.updateChatConfig(Number(chatId), {
+  //     paidUntil: subscriptionExpiresAt.toISO(),
+  //     state: ChatState.SEARCHING,
+  //   });
+
+  //   sendPaymentSuccess(
+  //     Number(chatId),
+  //     this,
+  //     subscriptionExpiresAt.toFormat("dd.MM.yyyy")
+  //   );
+  // };
+
+  public handleWalletPaySuccess = async (data: WalletWebhookMessage) => {
+    const transactTime = DateTime.fromJSDate(
+      new Date(data?.payload?.orderCompletedDateTime)
+    );
+    const subscriptionExpiresAt = transactTime.plus({ days: 30 });
+    const chatId = data?.payload?.customData;
+
+    const chatConfig = this.getChatConfig(Number(chatId));
+
+    if (isSubscriptionValid(chatConfig.paidUntil)) return;
+
+    this.updateChatConfig(Number(chatId), {
+      paidUntil: subscriptionExpiresAt.toISO(),
+      state: ChatState.SEARCHING,
+    });
+
+    sendPaymentSuccess(
+      Number(chatId),
+      this,
+      subscriptionExpiresAt.toFormat("dd.MM.yyyy")
+    );
+  };
+
+  public async sendMessage(
     chatId: number,
     message: string,
     options?: SendMessageOptions
   ) {
-    this.bot.sendMessage(chatId, message, options);
+    const wrappedFunc = this.limiter.wrap(async () => {
+      this.bot.sendMessage(chatId, message, options);
+    });
+
+    try {
+      await wrappedFunc();
+    } catch (e) {
+      console.log("chatId: ", chatId, e);
+    }
   }
 }

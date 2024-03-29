@@ -1,29 +1,32 @@
 import Denque from "denque";
-import { DEFAULT_MULTIPLIER, WINDOW_SIZE_MS } from "../utils/constants";
-import type { AdaptedMessage } from "../utils/adapters";
+import { DEFAULT_MULTIPLIER, DEFAULT_WINDOW_SIZE_MS } from "../utils/constants";
+import type { AdaptedMessage } from "../types";
 
 interface Trade {
   price: number;
   timestamp: number;
+  volume: number;
 }
 
 interface Queue {
   trades: Denque<Trade>;
-  startPrice: number;
+  minPrice: number;
+  totalVolume: number;
 }
 
 interface PriceChangeInfo {
   priceChange: number;
-  startPrice: number;
+  volumeChange: number;
+  minPrice: number;
   lastPrice: number;
 }
 
 interface SignificantPumpInfo {
   pair: string;
-  startPrice: number;
+  minPrice: number;
   lastPrice: number;
   diff: string;
-  totalPumps: number;
+  volumeChange: number;
 }
 
 class MultiTradeQueue {
@@ -32,12 +35,12 @@ class MultiTradeQueue {
     string,
     { priceChange: number; timestamp: number }
   > = {};
-  private pumpsCount: Record<string, number> = {};
-  private readonly windowSize: number = WINDOW_SIZE_MS; // 5 minutes
+  private readonly windowSize: number = DEFAULT_WINDOW_SIZE_MS; // 5 minutes
   private readonly percentage: number;
 
-  constructor(percentage: number) {
+  constructor(percentage: number, windowSize: number) {
     this.percentage = percentage;
+    this.windowSize = windowSize;
   }
 
   addTrade(message: AdaptedMessage): void {
@@ -46,48 +49,71 @@ class MultiTradeQueue {
     if (!this.queues[pair]) {
       this.queues[pair] = {
         trades: new Denque<Trade>(),
-        startPrice: parseFloat(trade.price),
+        minPrice: parseFloat(trade.price),
+        totalVolume: trade.volume,
       };
+      return;
     }
 
     const now = Date.now();
     const queue = this.queues[pair].trades;
     const newTradePrice = parseFloat(trade.price);
-    queue.push({ price: newTradePrice, timestamp: trade.timestamp });
+    const newTradeVolume = trade.volume;
+
+    this.queues[pair].totalVolume += newTradeVolume;
+
+    queue.push({
+      price: newTradePrice,
+      timestamp: trade.timestamp,
+      volume: newTradeVolume,
+    });
+
+    let minPrice = Infinity;
+
+    for (const trade of queue.toArray()) {
+      if (trade.price < minPrice) {
+        minPrice = trade.price;
+      }
+    }
+
+    this.queues[pair].minPrice = minPrice;
 
     while (
       queue.length > 0 &&
       now - (queue.peekFront() as Trade).timestamp > this.windowSize
     ) {
-      queue.shift();
-    }
+      const removedTrade = queue.shift() as Trade;
+      this.queues[pair].totalVolume -= removedTrade?.volume;
 
-    if (newTradePrice < this.queues[pair].startPrice || queue.length === 1) {
-      this.queues[pair].startPrice = newTradePrice;
-    }
-
-    if (
-      queue.length > 0 &&
-      this.queues[pair].startPrice !== (queue.peekFront() as Trade).price
-    ) {
-      this.queues[pair].startPrice = (queue.peekFront() as Trade).price;
+      if (removedTrade && removedTrade.price === this.queues[pair].minPrice) {
+        if (queue.length > 0) {
+          const prices = queue.toArray().map((trade) => trade.price);
+          this.queues[pair].minPrice = Math.min(...prices);
+        } else {
+          this.queues[pair].minPrice = newTradePrice;
+        }
+      }
     }
   }
 
   getCurrentPriceChange(pair: string): PriceChangeInfo {
     const queue = this.queues[pair]?.trades;
     if (!queue || queue.length === 0) {
-      return { priceChange: 0, startPrice: 0, lastPrice: 0 };
+      return { priceChange: 0, minPrice: 0, lastPrice: 0, volumeChange: 0 };
     }
-    const startPrice = this.queues[pair].startPrice;
+    const minPrice = this.queues[pair].minPrice;
     const lastTrade = queue.peekBack() as Trade;
-    const lastTradePrice = lastTrade.price;
-    const priceChange = ((lastTradePrice - startPrice) / startPrice) * 100;
-    return { priceChange, startPrice, lastPrice: lastTradePrice };
+    const priceChange = ((lastTrade.price - minPrice) / minPrice) * 100;
+
+    const totalVolume = this.queues[pair].totalVolume;
+    const volumeChange =
+      totalVolume > 0 ? (lastTrade.volume / totalVolume) * 100 : 0;
+
+    return { priceChange, minPrice, lastPrice: lastTrade.price, volumeChange };
   }
 
   checkAndLogSignificantPump(pair: string): SignificantPumpInfo | null {
-    const { priceChange, startPrice, lastPrice } =
+    const { priceChange, minPrice, lastPrice, volumeChange } =
       this.getCurrentPriceChange(pair);
     const lastPump = this.lastSignificantPump[pair];
     const now = Date.now();
@@ -102,14 +128,13 @@ class MultiTradeQueue {
       (isSignificant || now - (lastPump?.timestamp || 0) > this.windowSize)
     ) {
       this.lastSignificantPump[pair] = { priceChange, timestamp: now };
-      this.pumpsCount[pair] = (this.pumpsCount[pair] || 0) + 1;
 
       return {
         pair: pair.toUpperCase(),
-        startPrice,
+        minPrice,
         lastPrice,
         diff: priceChange.toFixed(2),
-        totalPumps: this.pumpsCount[pair],
+        volumeChange,
       };
     }
 

@@ -2,21 +2,22 @@ import i18next from "i18next";
 import en from "./translations/en.json";
 import ru from "./translations/ru.json";
 import ua from "./translations/ua.json";
+import { Language } from "@prisma/client";
 
 i18next.init({
   resources: {
-    en: {
+    EN: {
       translation: en,
     },
-    ru: {
+    RU: {
       translation: ru,
     },
-    ua: {
+    UA: {
       translation: ua,
     },
   },
-  lng: "en",
-  fallbackLng: "en",
+  lng: Language.EN,
+  fallbackLng: Language.EN,
   debug: false,
   keySeparator: "true",
   nsSeparator: false,

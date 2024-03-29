@@ -1,36 +1,55 @@
 {
-  "name": "mg-pump-bot",
+  "name": "pumpex-bot",
   "module": "index.ts",
   "type": "module",
   "scripts": {
     "dev": "bun ./index.ts",
     "build": "bun build ./index.ts --outdir ./build --target=bun",
-    "start": "bun ./build/index.js"
+    "start": "bun ./build/index.js",
+    "db:push": "bunx prisma db push",
+    "deploy": "./deploy.sh"
   },
   "devDependencies": {
     "@types/bun": "latest",
     "@types/luxon": "^3.4.2",
-    "@types/node-telegram-bot-api": "^0.64.2"
+    "@types/node-telegram-bot-api": "^0.64.2",
+    "@types/bull": "^4.10.0",
+    "@types/i18next": "^13.0.0",
+    "@types/lodash.isequal": "^4.5.8",
+    "@types/lodash.omit": "^4.5.9",
+    "@types/lodash.throttle": "^4.1.9",
+    "@types/mongodb": "^4.0.7",
+    "@types/ws": "^8.5.10"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
   },
   "dependencies": {
-    "@types/i18next": "^13.0.0",
-    "@types/lodash.isequal": "^4.5.8",
-    "@types/lodash.omit": "^4.5.9",
-    "@types/lodash.throttle": "^4.1.9",
-    "@types/ws": "^8.5.10",
+    "@bull-board/api": "^5.14.2",
+    "@bull-board/express": "^5.14.2",
+    "@bull-board/ui": "^5.14.2",
+    "@prisma/client": "5.10.2",
+    "@types/crypto-js": "^4.2.2",
+    "@types/express": "^4.17.21",
+    "@types/jsonwebtoken": "^9.0.6",
+    "@types/redis": "^4.0.11",
     "axios": "^1.6.7",
-    "crypto": "^1.0.1",
+    "body-parser": "^1.20.2",
+    "bottleneck": "^2.19.5",
+    "bull": "^4.12.2",
+    "crypto-js": "^4.2.0",
     "denque": "^2.1.0",
     "events": "^3.3.0",
+    "express": "^4.18.3",
     "i18next": "^23.10.0",
+    "jsonwebtoken": "^9.0.2",
     "lodash.isequal": "^4.5.0",
     "lodash.omit": "^4.5.0",
     "lodash.throttle": "^4.1.1",
     "luxon": "^3.4.4",
     "node-telegram-bot-api": "^0.64.0",
+    "prisma": "^5.10.2",
+    "redis": "^4.6.13",
     "ws": "^8.16.0"
   }
 }
