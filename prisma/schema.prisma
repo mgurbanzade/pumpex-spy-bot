@@ -5,7 +5,8 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {
@@ -23,6 +24,7 @@ model ChatConfig {
   stoppedExchanges String[]
   windowSize       Int
   state            ChatState
+  paidUntil        DateTime?
 }
 
 enum Language {
@@ -39,6 +41,7 @@ enum ChatState {
   SELECT_WINDOW_SIZE
   CHANGE_LANGUAGE
   UNSUBSCRIBE_EXCHANGES
+  SUBSCRIBE
   SEARCHING
   STOPPED
 }

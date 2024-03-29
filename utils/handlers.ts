@@ -28,7 +28,12 @@ import {
   sendSelectLanguages,
   sendSettingsOptions,
   sendWindowSizeOptions,
+  sendSubscriptionOptions,
+  sendPaymentOptions,
 } from "./senders";
+import { isSubscriptionValid } from "./payments";
+import { retrievePaymentURL } from "./binance-pay";
+import { retrieveWalletPaymentUrl } from "./wallet-pay";
 
 export const setNewChat = async (
   message: Message,
@@ -48,6 +53,7 @@ export const setNewChat = async (
     selectedPairs: [],
     stoppedExchanges: [],
     state: PrismaChatState.START,
+    paidUntil: null,
   };
 
   const res = await botService.createChatConfig(config);
@@ -65,7 +71,18 @@ export const handleStart = async (message: Message, botService: BotService) => {
       state: ChatState.SELECT_PAIRS,
     });
 
-    return sendSelectPairs(message, botService);
+    setTimeout(() => sendSelectPairs(message, botService), 300);
+    return;
+  }
+
+  const isValidSubscription = isSubscriptionValid(currentChat?.paidUntil);
+
+  if (!isValidSubscription) {
+    botService.updateChatConfig(message.chat.id, {
+      state: ChatState.SUBSCRIBE,
+    });
+
+    return sendSubscriptionOptions(message, botService, "send");
   }
 
   if (currentChat && !currentChat?.selectedPairs?.length) {
@@ -184,6 +201,21 @@ export const handleCallbackQuery = (
       });
       sendSettingsOptions(message, botService, "edit");
       break;
+    case "subscription":
+      // botService.updateChatConfig(message.chat.id, {
+      //   state: ChatState.SUBSCRIPTION,
+      // });
+      sendSubscriptionOptions(message, botService);
+      break;
+    case "payment-methods":
+      sendPaymentOptions(message, botService);
+      break;
+    case "binance-pay":
+      handleBinancePay(message, botService);
+      break;
+    case "wallet-pay":
+      handleWalletPay(message, botService);
+      break;
     default:
       break;
   }
@@ -193,6 +225,7 @@ export const handleSelectPairsInput = (
   message: Message,
   botService: BotService
 ) => {
+  const config = botService.getChatConfig(message.chat.id);
   const availableSymbols = botService.getAvailableSymbols();
   const inputSymbols =
     message.text
@@ -204,17 +237,7 @@ export const handleSelectPairsInput = (
     inputSymbols.filter((sym) => !availableSymbols.includes(sym)) || [];
   const validSymbols =
     inputSymbols.filter((sym) => availableSymbols.includes(sym)) || [];
-
-  if (validSymbols.length) {
-    botService.updateChatConfig(message.chat.id, {
-      selectedPairs: validSymbols,
-      state: ChatState.SEARCHING,
-    });
-
-    botService.setPairsToSubscribe(validSymbols);
-    botService.setNewPumpService(message.chat.id);
-    sendCurrentPairs(message.chat.id, botService);
-  }
+  const isValidSubscription = isSubscriptionValid(config?.paidUntil);
 
   if (invalidSymbols.length) {
     setTimeout(
@@ -226,6 +249,32 @@ export const handleSelectPairsInput = (
         ),
       200
     );
+  }
+
+  if (validSymbols.length) {
+    if (!isValidSubscription) {
+      botService.updateChatConfig(message.chat.id, {
+        state: ChatState.SUBSCRIBE,
+      });
+
+      setTimeout(
+        () => sendSubscriptionOptions(message, botService, "send"),
+        200
+      );
+
+      return botService.sendMessage(
+        message.chat.id,
+        i18next.t("settings-saved", { lng: config?.language })
+      );
+    }
+    botService.updateChatConfig(message.chat.id, {
+      selectedPairs: validSymbols,
+      state: ChatState.SEARCHING,
+    });
+
+    botService.setPairsToSubscribe(validSymbols);
+    botService.setNewPumpService(message.chat.id);
+    sendCurrentPairs(message.chat.id, botService);
   }
 };
 
@@ -344,4 +393,101 @@ export const handleSelectWindowSizeInput = (
     i18next.t("invalid-window-size", { lng: config?.language }),
     { parse_mode: "Markdown" as ParseMode }
   );
+};
+
+export const handleBinancePay = async (
+  message: Message,
+  botService: BotService
+) => {
+  const config = botService.getChatConfig(message.chat.id);
+  botService.bot.editMessageText(
+    i18next.t("please-wait", { lng: config?.language }),
+    {
+      chat_id: message.chat.id,
+      message_id: message.message_id,
+    }
+  );
+
+  const paymentUrl = await retrievePaymentURL({ chatId: message.chat.id });
+
+  if (paymentUrl) {
+    setTimeout(
+      () =>
+        botService.bot.editMessageText(
+          i18next.t("tap-to-open", { lng: config?.language }),
+          {
+            chat_id: message.chat.id,
+            message_id: message.message_id,
+            reply_markup: {
+              inline_keyboard: [
+                [
+                  {
+                    text: i18next.t("switch-to-binance", {
+                      lng: config?.language,
+                    }),
+                    url: paymentUrl,
+                  },
+                ],
+              ],
+            },
+          }
+        ),
+      300
+    );
+  } else {
+    botService.bot.editMessageText(
+      i18next.t("failed-binance", { lng: config?.language })
+    );
+  }
+};
+
+const handleWalletPay = async (message: Message, botService: BotService) => {
+  const config = botService.getChatConfig(message.chat.id);
+  botService.bot.editMessageText(
+    i18next.t("please-wait", { lng: config?.language }),
+    {
+      chat_id: message.chat.id,
+      message_id: message.message_id,
+    }
+  );
+
+  const paymentUrl = await retrieveWalletPaymentUrl({
+    chatId: message.chat.id,
+  });
+
+  if (paymentUrl) {
+    setTimeout(
+      () =>
+        botService.bot.editMessageText(
+          i18next.t("tap-to-open", { lng: config?.language }),
+          {
+            chat_id: message.chat.id,
+            message_id: message.message_id,
+            reply_markup: {
+              inline_keyboard: [
+                [
+                  {
+                    text: i18next.t("open-wallet", {
+                      lng: config?.language,
+                    }),
+                    url: paymentUrl,
+                  },
+                ],
+              ],
+            },
+          }
+        ),
+      300
+    );
+  } else {
+    botService.bot.editMessageText(
+      i18next.t("failed-wallet", { lng: config?.language }) +
+        "\n\n" +
+        "@pumpexsupport",
+      {
+        chat_id: message.chat.id,
+        message_id: message.message_id,
+      }
+    );
+  }
 };

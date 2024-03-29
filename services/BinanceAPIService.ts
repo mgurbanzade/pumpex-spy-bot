@@ -1,10 +1,14 @@
 import EventEmitter from "events";
 import WebSocket from "ws";
+import { DateTime } from "luxon";
 import { EVENTS } from "../utils/constants";
+import { splitIntoGroups } from "../utils/helpers";
 
 class BinanceAPIService extends EventEmitter {
   private symbols: string[] = [];
   private connections: WebSocket[] = [];
+  private reconnectAttempts: number = 0;
+  private maxReconnectAttempts: number = 5;
 
   constructor() {
     super();
@@ -14,6 +18,11 @@ class BinanceAPIService extends EventEmitter {
   private async initialize(): Promise<void> {
     await this.fetchSymbols();
   }
+
+  private handleMessage = (data: Record<string, any>) => {
+    const message = JSON.parse(data as any);
+    this.emit(EVENTS.MESSAGE_RECEIVED, message);
+  };
 
   private async fetchSymbols() {
     try {
@@ -39,48 +48,73 @@ class BinanceAPIService extends EventEmitter {
     }
   }
 
+  private connectToStream(pairsGroup: string[], index: number) {
+    const streams = pairsGroup.map((pair) => `${pair.toLowerCase()}@aggTrade`);
+    const params = streams.join("/");
+
+    const wsUrl = `wss://fstream.binance.com/stream?streams=${params}`;
+    const wSocket = new WebSocket(wsUrl);
+
+    this.connections[index] = wSocket;
+
+    wSocket.on("open", () => {
+      this.reconnectAttempts = 0;
+
+      console.log(
+        `WebSocket connection established on Binance for group ${pairsGroup}`
+      );
+      console.log(
+        "---------------------------------------------------------------"
+      );
+    });
+
+    wSocket.on("message", this.handleMessage);
+
+    wSocket.on("error", (error) => {
+      console.log("WebSocket error: " + error.message);
+    });
+
+    wSocket.on("close", (code, reason) => {
+      console.log(
+        `Binance webSocket connection closed with code: ${code}, reason: ${reason}`
+      );
+      console.log(
+        "---------------------------------------------------------------"
+      );
+
+      if (this.reconnectAttempts < this.maxReconnectAttempts) {
+        setTimeout(() => {
+          const time = DateTime.now().toLocaleString({
+            hour: "2-digit",
+            minute: "2-digit",
+            day: "2-digit",
+            month: "short",
+            hourCycle: "h23",
+          });
+
+          console.log(
+            `Attempting to reconnect... (${
+              this.reconnectAttempts + 1
+            }),  Time: ${time}`
+          );
+
+          this.reconnectAttempts++;
+          this.connectToStream(pairsGroup, index);
+        }, 1000 * this.reconnectAttempts);
+      }
+    });
+  }
+
   public async subscribeToStreams(symbols: string[]) {
     console.log("Closing all existing connections on Binance");
     this.closeAllConnections();
 
     const groupSize = 50;
-    const groupsOfPairs = this.splitIntoGroups(symbols, groupSize);
-    const handleMessage = (data: Record<string, any>) => {
-      const message = JSON.parse(data as any);
-      this.emit(EVENTS.MESSAGE_RECEIVED, message);
-    };
+    const groupsOfPairs = splitIntoGroups(symbols, groupSize);
 
     groupsOfPairs.forEach((pairsGroup, index) => {
-      const streams = pairsGroup.map(
-        (pair) => `${pair.toLowerCase()}@aggTrade`
-      );
-      const params = streams.join("/");
-      const wsUrl = `wss://fstream.binance.com/stream?streams=${params}`;
-      const wSocket = new WebSocket(wsUrl);
-      this.connections.push(wSocket);
-
-      wSocket.on("open", () => {
-        console.log(
-          `WebSocket connection established on Binance for group ${pairsGroup}`
-        );
-      });
-
-      wSocket.on("message", handleMessage);
-
-      wSocket.on("error", (error) => {
-        console.log("WebSocket error: " + error.message);
-      });
+      this.connectToStream(pairsGroup, index);
     });
-  }
-
-  private splitIntoGroups(arr: string[], groupSize: number) {
-    const groups = [];
-
-    for (let i = 0; i < arr.length; i += groupSize) {
-      groups.push(arr.slice(i, i + groupSize));
-    }
-
-    return groups;
   }
 
   public getSymbols() {

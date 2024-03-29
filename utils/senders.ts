@@ -1,16 +1,20 @@
-import type { Chat, Message, ParseMode } from "node-telegram-bot-api";
-import type { ChatConfig as PrismaChatConfig } from "@prisma/client";
+import type { Message, ParseMode } from "node-telegram-bot-api";
 import i18next from "../i18n";
 import type BotService from "../services/BotService";
 import { type ChatConfig, ChatState, Language } from "../types";
 import {
   DEFAULT_LANGUAGE,
   DEFAULT_PERCENTAGE,
+  DEFAULT_SUBSCRIPTION_PRICE,
   DEFAULT_WINDOW_SIZE_MS,
   MAX_WINDOW_SIZE_MS,
   MIN_PERCENTAGE,
   MIN_WINDOW_SIZE_MS,
+  PAY_URL,
+  SUPPORT_CHAT_URL,
 } from "./constants";
+import { isSubscriptionValid } from "./payments";
+import { DateTime } from "luxon";
 
 export const sendGreetings = (
   chatId: number,
@@ -157,19 +161,25 @@ export const sendSettingsOptions = (
             }),
             callback_data: "select-pairs",
           },
-        ],
-        [
           {
             text: i18next.t("select-percentage", {
               lng,
             }),
             callback_data: "select-percentage",
           },
+        ],
+        [
           {
             text: i18next.t("select-window-size", {
               lng,
             }),
             callback_data: ChatState.SELECT_WINDOW_SIZE,
+          },
+          {
+            text: i18next.t("stop-exchanges", {
+              lng,
+            }),
+            callback_data: "stop-exchanges",
           },
         ],
         [
@@ -179,13 +189,19 @@ export const sendSettingsOptions = (
             }),
             callback_data: "select-language",
           },
+          {
+            text: i18next.t("subscription", {
+              lng,
+            }),
+            callback_data: "subscription",
+          },
         ],
         [
           {
-            text: i18next.t("stop-exchanges", {
+            text: i18next.t("support", {
               lng,
             }),
-            callback_data: "stop-exchanges",
+            url: SUPPORT_CHAT_URL,
           },
         ],
       ],
@@ -378,6 +394,169 @@ export const sendWindowSizeOptions = (
       chat_id: message.chat.id,
       message_id: message.message_id,
       ...options,
+    }
+  );
+};
+
+export const sendSubscriptionOptions = (
+  message: Message,
+  botService: BotService,
+  action: "edit" | "send" = "edit"
+) => {
+  const config = botService.getChatConfig(message.chat.id);
+  const opts = {
+    parse_mode: "Markdown" as ParseMode,
+    message_id: message.message_id,
+    chat_id: message.chat.id,
+    reply_markup: {
+      inline_keyboard: [
+        [
+          {
+            text: i18next.t("back", {
+              lng: config?.language,
+            }),
+            callback_data: ChatState.SETTINGS,
+          },
+        ],
+      ],
+    },
+  };
+
+  if (isSubscriptionValid(config?.paidUntil)) {
+    const date = DateTime.fromJSDate(config?.paidUntil as Date).toFormat(
+      "dd.MM.yyyy"
+    );
+    return botService.bot.editMessageText(
+      i18next.t("subscription-active-until", {
+        lng: config?.language,
+        date,
+      }),
+      opts
+    );
+  }
+
+  // const paramsForUrl = new URLSearchParams({
+  //   chatId: message.chat.id.toString(),
+  //   username: message.chat.username || "",
+  //   locale: config?.language || DEFAULT_LANGUAGE,
+  //   amount: DEFAULT_SUBSCRIPTION_PRICE.toString(),
+  // });
+
+  const options = {
+    parse_mode: "Markdown" as ParseMode,
+    reply_markup: {
+      inline_keyboard: [
+        [
+          {
+            text: i18next.t("subscription-btn", {
+              lng: config?.language,
+              amount: DEFAULT_SUBSCRIPTION_PRICE,
+            }),
+            callback_data: "payment-methods",
+            // web_app: {
+            //   url: PAY_URL + "?" + paramsForUrl.toString(),
+            // },
+          },
+        ],
+        action === "edit"
+          ? [
+              {
+                text: i18next.t("back", {
+                  lng: config?.language,
+                }),
+                callback_data: ChatState.SETTINGS,
+              },
+            ]
+          : [],
+      ],
+    },
+  };
+
+  if (action === "send") {
+    return botService.sendMessage(
+      message.chat.id,
+      i18next.t("subscription-desc", {
+        lng: config?.language,
+      }),
+      options
+    );
+  }
+
+  botService.bot.editMessageText(
+    i18next.t("subscription-desc", {
+      lng: config?.language,
+    }),
+    {
+      ...options,
+      chat_id: message.chat.id,
+      message_id: message.message_id,
+    }
+  );
+};
+
+export const sendPaymentSuccess = (
+  chatId: number,
+  botService: BotService,
+  date: string
+) => {
+  const config = botService.getChatConfig(chatId);
+  const message = `${i18next.t("payment-success", {
+    lng: config?.language,
+  })}\n\n${i18next.t("subscription-active-until", {
+    lng: config?.language,
+    date,
+  })}`;
+
+  return botService.sendMessage(chatId, message, {
+    parse_mode: "Markdown" as ParseMode,
+  });
+};
+
+export const sendPaymentOptions = (
+  message: Message,
+  botService: BotService
+) => {
+  const config = botService.getChatConfig(message.chat.id);
+  const options = {
+    parse_mode: "Markdown" as ParseMode,
+    reply_markup: {
+      inline_keyboard: [
+        // [
+        //   {
+        //     text: i18next.t("binance-pay", {
+        //       lng: config?.language,
+        //     }),
+        //     callback_data: "binance-pay",
+        //   },
+        // ],
+        [
+          {
+            text: i18next.t("wallet-pay", {
+              lng: config?.language,
+            }),
+            callback_data: "wallet-pay",
+          },
+        ],
+        [
+          {
+            text: i18next.t("back", {
+              lng: config?.language,
+            }),
+            callback_data: ChatState.SETTINGS,
+          },
+        ],
+      ],
+    },
+  };
+
+  botService.bot.editMessageText(
+    i18next.t("choose-payment-method", {
+      lng: config?.language,
+    }),
+    {
+      ...options,
+      chat_id: message.chat.id,
+      message_id: message.message_id,
     }
   );
 };

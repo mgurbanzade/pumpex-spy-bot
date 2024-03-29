@@ -28,7 +28,6 @@ class ConfigService extends EventEmitter {
           [curr.chatId]: curr,
         };
       }, {});
-
       this.emit(EVENTS.CONFIG_LOADED, res);
     } catch (e) {
       console.error("Something went wrong. ConfigService.initialize", e);

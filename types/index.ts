@@ -11,6 +11,7 @@ export type ChatConfig = {
   windowSize: number;
   state: ChatState | PrismaChatState;
   language: Language | PrismaLanguage;
+  paidUntil: Date | string | null;
 };
 
 export enum Language {
@@ -27,8 +28,10 @@ export enum ChatState {
   SELECT_WINDOW_SIZE = "SELECT_WINDOW_SIZE",
   CHANGE_LANGUAGE = "CHANGE_LANGUAGE",
   UNSUBSCRIBE_EXCHANGES = "UNSUBSCRIBE_EXCHANGES",
+  SUBSCRIBE = "SUBSCRIBE",
   SEARCHING = "SEARCHING",
   STOPPED = "STOPPED",
+  SUPPORT = "SUPPORT",
 }
 
 export type AdaptedMessage = {
@@ -89,4 +92,19 @@ export type CoinbaseTradeData = {
   product_id: string;
   sequence: number;
   time: string;
+};
+
+export type WalletWebhookMessage = {
+  eventId: number;
+  eventDateTime: string;
+  payload: {
+    id: number;
+    number: string;
+    customData: string;
+    externalId: string;
+    orderAmount: Record<string, any>;
+    selectedPaymentOption: Record<string, any>;
+    orderCompletedDateTime: string;
+  };
+  type: string;
 };

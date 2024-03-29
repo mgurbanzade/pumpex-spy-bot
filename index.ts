@@ -1,3 +1,4 @@
+import express from "express";
 import Queue, { type Job } from "bull";
 
 import ConfigService from "./services/ConfigService";
@@ -16,7 +17,10 @@ import type {
   BybitTradeMessage,
   ChatConfig,
   CoinbaseTradeData,
+  WalletWebhookMessage,
 } from "./types";
+import { validatePayment } from "./utils/payments";
+import { verifyWalletSignature } from "./utils/wallet-pay";
 
 const messageQueue = new Queue("messageProcessing", {
   redis: {
@@ -143,4 +147,52 @@ configService.on(EVENTS.CONFIG_LOADED, (config: ChatConfig[]) => {
   if (uniquePairs.length) {
     bot.setPairsToSubscribe(uniquePairs);
   }
+});
+
+const app = express();
+app.use(express.text());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// app.post("/payments/callback", (req, res) => {
+//   const status = req.body.status;
+//   const invoiceId = req.body.invoice_id;
+//   const token = req.body.token;
+
+//   if (status === "success") {
+//     const isValid = validatePayment(token);
+//     if (!isValid) return;
+
+//     bot.handlePaymentSuccess(invoiceId);
+//   } else {
+//     // bot.handlePaymentFailure(chatId);
+//   }
+
+//   res.json({ message: "ok" });
+// });
+
+// app.post("/payments/binance/callback", (req, res) => {
+//   console.log(req.body);
+
+//   if (req.body.bizType === "PAY" && req.body?.bizStatus === "PAY_SUCCESS") {
+//     bot.handleBinancePaySuccess(JSON.parse(req.body.data));
+//   }
+
+//   res.json({ message: "ok" });
+// });
+
+app.post("/payments/wallet/callback", (req, res) => {
+  req.body?.forEach((event: WalletWebhookMessage) => {
+    if (event?.type === "ORDER_PAID") {
+      if (verifyWalletSignature(req)) {
+        bot.handleWalletPaySuccess(event);
+      }
+    }
+  });
+
+  res.json({ message: "ok" });
+});
+
+app.listen(3001, () => {
+  console.log("Server is running on port 3001");
 });

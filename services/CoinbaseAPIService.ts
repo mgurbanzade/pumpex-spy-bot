@@ -1,10 +1,14 @@
 import EventEmitter from "events";
 import WebSocket from "ws";
+import { DateTime } from "luxon";
 import { DISABLED_PAIRS, EVENTS } from "../utils/constants";
+import { splitIntoGroups } from "../utils/helpers";
 
 class CoinbaseAPIService extends EventEmitter {
   private symbols: string[] = [];
   private connections: WebSocket[] = [];
+  private reconnectAttempts: number = 0;
+  private maxReconnectAttempts: number = 5;
 
   constructor() {
     super();
@@ -14,6 +18,16 @@ class CoinbaseAPIService extends EventEmitter {
   private async initialize(): Promise<void> {
     await this.fetchSymbols();
   }
+
+  private handleMessage = (data: Record<string, any>) => {
+    const message = JSON.parse(data as any);
+
+    if (message.type === "error") {
+      console.log(message.message + " reason: " + message.reason);
+    }
+
+    this.emit(EVENTS.MESSAGE_RECEIVED, message);
+  };
 
   private async fetchSymbols() {
     try {
@@ -43,71 +57,92 @@ class CoinbaseAPIService extends EventEmitter {
     }
   }
 
+  private connectToStream(pairsGroup: string[], index: number) {
+    const wsUrl = `wss://ws-feed.pro.coinbase.com`;
+    const wSocket = new WebSocket(wsUrl, {
+      perMessageDeflate: true,
+      maxPayload: 1024 * 1024 * 2,
+    });
+
+    this.connections[index] = wSocket;
+
+    wSocket.on("open", () => {
+      this.reconnectAttempts = 0;
+
+      try {
+        wSocket.send(
+          JSON.stringify({
+            type: "subscribe",
+            channels: [
+              { name: "matches", product_ids: pairsGroup },
+              { name: "heartbeat", product_ids: pairsGroup },
+            ],
+          })
+        );
+      } catch (error) {
+        console.log(error);
+      }
+
+      console.log(
+        `WebSocket connection established on Coinbase for group ${pairsGroup}`
+      );
+      console.log(
+        "---------------------------------------------------------------"
+      );
+    });
+
+    wSocket.on("message", this.handleMessage);
+
+    wSocket.on("close", (code, reason) => {
+      console.log(
+        `Coinbase WebSocket connection closed with code: ${code}, reason: ${reason} `
+      );
+      console.log(
+        "---------------------------------------------------------------"
+      );
+
+      if (this.reconnectAttempts < this.maxReconnectAttempts) {
+        setTimeout(() => {
+          const time = DateTime.now().toLocaleString({
+            hour: "2-digit",
+            minute: "2-digit",
+            day: "2-digit",
+            month: "short",
+            hourCycle: "h23",
+          });
+
+          console.log(
+            `Attempting to reconnect... (${
+              this.reconnectAttempts + 1
+            }),  Time: ${time}`
+          );
+
+          this.reconnectAttempts++;
+          this.connectToStream(pairsGroup, index);
+        }, 1000 * this.reconnectAttempts);
+      }
+    });
+
+    wSocket.on("error", (error) => {
+      console.log("WebSocket error: " + error.message);
+    });
+  }
+
   public async subscribeToStreams(symbols: string[]) {
     if (!symbols.length) return;
     console.log("Closing all existing connections on Coinbase");
     this.closeAllConnections();
+
     const groupSize = 50;
-    const groupsOfPairs = this.splitIntoGroups(symbols, groupSize);
-    const handleMessage = (data: Record<string, any>) => {
-      const message = JSON.parse(data as any);
-
-      if (message.type === "error") {
-        console.log(message.message + " reason: " + message.reason);
-      }
-
-      this.emit(EVENTS.MESSAGE_RECEIVED, message);
-    };
+    const groupsOfPairs = splitIntoGroups(symbols, groupSize);
 
     groupsOfPairs.forEach((pairsGroup, index) => {
-      const wsUrl = `wss://ws-feed.pro.coinbase.com`;
-      const wSocket = new WebSocket(wsUrl, {
-        perMessageDeflate: true,
-        maxPayload: 1024 * 1024 * 2,
-      });
-
-      this.connections.push(wSocket);
-
-      wSocket.on("open", () => {
-        try {
-          const res = wSocket.send(
-            JSON.stringify({
-              type: "subscribe",
-              channels: [
-                { name: "matches", product_ids: pairsGroup },
-                { name: "heartbeat", product_ids: pairsGroup },
-              ],
-            })
-          );
-        } catch (error) {
-          console.log(error);
-        }
-
-        console.log(
-          `WebSocket connection established on Coinbase for group ${pairsGroup}`
-        );
-      });
-
-      wSocket.on("message", handleMessage);
-
-      wSocket.on("error", (error) => {
-        console.log("WebSocket error: " + error.message);
-      });
+      this.connectToStream(pairsGroup, index);
     });
   }
 
   public getSymbols() {
     return this.symbols;
-  }
-
-  private splitIntoGroups(arr: string[], groupSize: number) {
-    const groups = [];
-
-    for (let i = 0; i < arr.length; i += groupSize) {
-      groups.push(arr.slice(i, i + groupSize));
-    }
-
-    return groups;
   }
 
   private closeAllConnections() {

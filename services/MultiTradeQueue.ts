@@ -26,7 +26,6 @@ interface SignificantPumpInfo {
   minPrice: number;
   lastPrice: number;
   diff: string;
-  totalPumps: number;
   volumeChange: number;
 }
 
@@ -36,7 +35,6 @@ class MultiTradeQueue {
     string,
     { priceChange: number; timestamp: number }
   > = {};
-  private pumpsCount: Record<string, number> = {};
   private readonly windowSize: number = DEFAULT_WINDOW_SIZE_MS; // 5 minutes
   private readonly percentage: number;
 
@@ -70,20 +68,30 @@ class MultiTradeQueue {
       volume: newTradeVolume,
     });
 
-    this.queues[pair].minPrice = Math.min(
-      this.queues[pair].minPrice,
-      newTradePrice
-    );
+    let minPrice = Infinity;
+
+    for (const trade of queue.toArray()) {
+      if (trade.price < minPrice) {
+        minPrice = trade.price;
+      }
+    }
+
+    this.queues[pair].minPrice = minPrice;
 
     while (
       queue.length > 0 &&
       now - (queue.peekFront() as Trade).timestamp > this.windowSize
     ) {
-      const removedTrade = queue.shift();
+      const removedTrade = queue.shift() as Trade;
+      this.queues[pair].totalVolume -= removedTrade?.volume;
 
       if (removedTrade && removedTrade.price === this.queues[pair].minPrice) {
-        const prices = queue.toArray().map((trade) => trade.price);
-        this.queues[pair].minPrice = Math.min(...prices);
+        if (queue.length > 0) {
+          const prices = queue.toArray().map((trade) => trade.price);
+          this.queues[pair].minPrice = Math.min(...prices);
+        } else {
+          this.queues[pair].minPrice = newTradePrice;
+        }
       }
     }
   }
@@ -120,14 +128,12 @@ class MultiTradeQueue {
       (isSignificant || now - (lastPump?.timestamp || 0) > this.windowSize)
     ) {
       this.lastSignificantPump[pair] = { priceChange, timestamp: now };
-      this.pumpsCount[pair] = (this.pumpsCount[pair] || 0) + 1;
 
       return {
         pair: pair.toUpperCase(),
         minPrice,
         lastPrice,
         diff: priceChange.toFixed(2),
-        totalPumps: this.pumpsCount[pair],
         volumeChange,
       };
     }

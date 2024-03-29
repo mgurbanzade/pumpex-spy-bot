@@ -5,6 +5,7 @@ import {
   getBinanceFuturesURL,
   getBybitFuturesURL,
   getCoinbaseURL,
+  type PlatformType,
 } from "../utils/constants";
 import type { AdaptedMessage } from "../types";
 import type { Language } from "@prisma/client";
@@ -31,13 +32,19 @@ class PumpService {
     );
   }
 
-  public getPriceInFloatingPoint = (price: number) => {
-    return price <= 0.09 ? price.toFixed(6) : price.toFixed(3);
+  public getPriceInFloatingPoint = (price: number, platform: PlatformType) => {
+    const digitDispatcher = {
+      Binance: 6,
+      Bybit: 5,
+      Coinbase: 6,
+    };
+
+    const digit = digitDispatcher[platform];
+    return price <= 0.09 ? price.toFixed(digit) : price.toFixed(3);
   };
 
   public handleMessage = async (message: AdaptedMessage) => {
     const { pair, platform } = message;
-
     const selectedPairs = this.config.selectedPairs;
     if (selectedPairs?.length && !selectedPairs?.includes(pair)) return;
 
@@ -46,8 +53,7 @@ class PumpService {
 
     if (checkResult !== null) {
       const lng = this.config.language;
-      const { pair, minPrice, lastPrice, diff, totalPumps, volumeChange } =
-        checkResult;
+      const { pair, minPrice, lastPrice, diff, volumeChange } = checkResult;
 
       const currency = platform === "Coinbase" ? pair.split("-")[1] : "USDT";
 
@@ -63,11 +69,10 @@ class PumpService {
         currency,
         pair: `[${pair}](${link})`,
         link,
-        startPrice: this.getPriceInFloatingPoint(minPrice),
-        lastPrice: this.getPriceInFloatingPoint(lastPrice),
-        volumeChange: this.getPriceInFloatingPoint(volumeChange),
+        startPrice: this.getPriceInFloatingPoint(minPrice, platform),
+        lastPrice: this.getPriceInFloatingPoint(lastPrice, platform),
+        volumeChange: this.getPriceInFloatingPoint(volumeChange, platform),
         diff,
-        totalPumps,
         lng,
       });
 

@@ -1,8 +1,9 @@
+import { DateTime } from "luxon";
 import EventEmitter from "events";
 import TelegramBot from "node-telegram-bot-api";
 import omit from "lodash.omit";
 import PumpService from "./PumpService";
-import type { ChatConfig } from "../types";
+import type { ChatConfig, WalletWebhookMessage } from "../types";
 
 import type {
   Message,
@@ -19,13 +20,15 @@ import {
 } from "../utils/handlers";
 
 import { EVENTS } from "../utils/constants";
-import { sendSettingsOptions } from "../utils/senders";
+import { sendPaymentSuccess, sendSettingsOptions } from "../utils/senders";
 import type ConfigService from "./ConfigService";
 import { ChatState, type AdaptedMessage } from "../types";
-import type { ConfigType } from "./ConfigService";
 import type { Prisma } from "@prisma/client";
+import { fetchInvoice, isSubscriptionValid } from "../utils/payments";
+import Bottleneck from "bottleneck";
 
 export default class BotService extends EventEmitter {
+  private limiter: Bottleneck;
   public config: ConfigService;
   public bot: TelegramBot;
   private pumpServices: { [key: string]: PumpService };
@@ -37,7 +40,15 @@ export default class BotService extends EventEmitter {
     this.config = config;
     this.availableSymbols = [];
     this.pumpServices = {};
-    this.bot = new TelegramBot(process.env.TELEGRAM_API_TOKEN as string, {
+
+    this.limiter = new Bottleneck({
+      reservoir: 25,
+      reservoirRefreshAmount: 25,
+      reservoirRefreshInterval: 1000,
+      maxConcurrent: 1,
+      minTime: 40,
+    });
+    this.bot = new TelegramBot(process.env.TELEGRAM_API_PROD_TOKEN as string, {
       polling: true,
     });
 
@@ -77,6 +88,7 @@ export default class BotService extends EventEmitter {
 
   public async initialize() {
     const chatConfigs = this.config.getAll();
+
     for (let chatId in chatConfigs) {
       const chatConfig = chatConfigs[chatId];
       this.pumpServices[chatId] = new PumpService(
@@ -95,13 +107,16 @@ export default class BotService extends EventEmitter {
           continue;
         }
 
+        const isActiveSubscription = isSubscriptionValid(
+          chatConfig.paidUntil as string
+        );
         const isChatStopped = chatConfig?.state === ChatState.STOPPED;
-
         const isExchangeStopped = chatConfig?.stoppedExchanges.includes(
           message.platform.toLowerCase()
         );
 
-        if (isExchangeStopped || isChatStopped) continue;
+        if (isExchangeStopped || isChatStopped || !isActiveSubscription)
+          continue;
 
         const pumpService = this.pumpServices[key];
         pumpService.handleMessage(message);
@@ -183,11 +198,84 @@ export default class BotService extends EventEmitter {
     this.emit(EVENTS.SUBSCRIPTIONS_UPDATED, updatedSubscriptions);
   }
 
-  public sendMessage(
+  public handlePaymentSuccess = async (invoiceId: string) => {
+    const invoiceData: any = await fetchInvoice(invoiceId);
+    const invoice = invoiceData?.result[0];
+    const invoiceExpiresAt = DateTime.fromJSDate(new Date(invoice.expiry_date));
+    const subscriptionExpiresAt = invoiceExpiresAt.plus({ days: 30 });
+
+    if (invoiceData?.status === "success" && invoice.status === "paid") {
+      const chatId = invoice.order_id;
+      this.updateChatConfig(Number(chatId), {
+        paidUntil: subscriptionExpiresAt.toISO(),
+        state: ChatState.SEARCHING,
+      });
+
+      sendPaymentSuccess(
+        Number(chatId),
+        this,
+        subscriptionExpiresAt.toFormat("dd.MM.yyyy")
+      );
+    }
+  };
+
+  // public handleBinancePaySuccess = async (data: any) => {
+  //   const transactTime = DateTime.fromJSDate(new Date(data?.transactTime));
+  //   const subscriptionExpiresAt = transactTime.plus({ days: 30 });
+  //   const chatId = data?.merchantTradeNo?.split("date")[0];
+
+  //   const chatConfig = this.getChatConfig(Number(chatId));
+
+  //   if (isSubscriptionValid(chatConfig.paidUntil)) return;
+
+  //   this.updateChatConfig(Number(chatId), {
+  //     paidUntil: subscriptionExpiresAt.toISO(),
+  //     state: ChatState.SEARCHING,
+  //   });
+
+  //   sendPaymentSuccess(
+  //     Number(chatId),
+  //     this,
+  //     subscriptionExpiresAt.toFormat("dd.MM.yyyy")
+  //   );
+  // };
+
+  public handleWalletPaySuccess = async (data: WalletWebhookMessage) => {
+    const transactTime = DateTime.fromJSDate(
+      new Date(data?.payload?.orderCompletedDateTime)
+    );
+    const subscriptionExpiresAt = transactTime.plus({ days: 30 });
+    const chatId = data?.payload?.customData;
+
+    const chatConfig = this.getChatConfig(Number(chatId));
+
+    if (isSubscriptionValid(chatConfig.paidUntil)) return;
+
+    this.updateChatConfig(Number(chatId), {
+      paidUntil: subscriptionExpiresAt.toISO(),
+      state: ChatState.SEARCHING,
+    });
+
+    sendPaymentSuccess(
+      Number(chatId),
+      this,
+      subscriptionExpiresAt.toFormat("dd.MM.yyyy")
+    );
+  };
+
+  public async sendMessage(
     chatId: number,
     message: string,
     options?: SendMessageOptions
   ) {
-    this.bot.sendMessage(chatId, message, options);
+    const wrappedFunc = this.limiter.wrap(async () => {
+      this.bot.sendMessage(chatId, message, options);
+    });
+
+    try {
+      await wrappedFunc();
+    } catch (e) {
+      console.log("chatId: ", chatId, e);
+    }
   }
 }
