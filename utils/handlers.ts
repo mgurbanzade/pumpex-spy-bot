@@ -1,4 +1,9 @@
-import type { CallbackQuery, Message, ParseMode } from "node-telegram-bot-api";
+import type {
+  CallbackQuery,
+  Message,
+  ParseMode,
+  BotCommandScopeDefault,
+} from "node-telegram-bot-api";
 import {
   type Prisma,
   Language,
@@ -15,6 +20,7 @@ import {
   MAX_WINDOW_SIZE_MS,
   MIN_PERCENTAGE,
   MIN_WINDOW_SIZE_MS,
+  SUPPORT_CHAT_URL,
 } from "./constants";
 
 import {
@@ -30,6 +36,12 @@ import {
   sendWindowSizeOptions,
   sendSubscriptionOptions,
   sendPaymentOptions,
+  sendHelpOptions,
+  sendKnowledgeBase,
+  sendTerms,
+  sendToKnow,
+  sendHowToUse,
+  sendInDev,
 } from "./senders";
 import { isSubscriptionValid } from "./payments";
 import { retrievePaymentURL } from "./binance-pay";
@@ -75,6 +87,31 @@ export const handleStart = async (message: Message, botService: BotService) => {
     return;
   }
 
+  const lng = currentChat.language || DEFAULT_LANGUAGE;
+
+  const commands = [
+    { command: "start", description: i18next.t("start", { lng }) },
+    { command: "settings", description: i18next.t("settings", { lng }) },
+    {
+      command: "knowledge",
+      description: i18next.t("knowledge-base", { lng }),
+    },
+    { command: "help", description: i18next.t("help", { lng }) },
+    { command: "stop", description: i18next.t("stop", { lng }) },
+  ];
+
+  const scope = {
+    type: "chat" as BotCommandScopeDefault["type"],
+    chat_id: message.chat.id,
+    user_id: message.from?.id as number,
+  };
+
+  try {
+    await botService.bot.setMyCommands(commands, { scope });
+  } catch (e) {
+    console.log(e);
+  }
+
   const isValidSubscription = isSubscriptionValid(currentChat?.paidUntil);
 
   if (!isValidSubscription) {
@@ -107,6 +144,10 @@ export const handleStart = async (message: Message, botService: BotService) => {
 
     return sendAlreadyStarted(message, botService, currentChat);
   }
+};
+
+export const handleHelp = (message: Message, botService: BotService) => {
+  return sendHelpOptions(message, botService);
 };
 
 export const handleStop = (message: Message, botService: BotService) => {
@@ -216,6 +257,21 @@ export const handleCallbackQuery = (
     case "wallet-pay":
       handleWalletPay(message, botService);
       break;
+    case "knowledge":
+      sendKnowledgeBase(message, botService);
+      break;
+    case "terms":
+      sendTerms(message, botService);
+      break;
+    case "things-to-know":
+      sendToKnow(message, botService);
+      break;
+    case "how-to-use":
+      sendHowToUse(message, botService);
+      break;
+    case "in-development":
+      sendInDev(message, botService);
+      break;
     default:
       break;
   }
@@ -324,6 +380,32 @@ export const handleLanguageInput = (
     language,
     state: ChatState.SEARCHING,
   });
+
+  const commands = [
+    { command: "start", description: i18next.t("start", { lng: language }) },
+    {
+      command: "settings",
+      description: i18next.t("settings", { lng: language }),
+    },
+    {
+      command: "knowledge",
+      description: i18next.t("knowledge-base", { lng: language }),
+    },
+    { command: "help", description: i18next.t("help", { lng: language }) },
+    { command: "stop", description: i18next.t("stop", { lng: language }) },
+  ];
+
+  const scope = {
+    type: "chat" as BotCommandScopeDefault["type"],
+    chat_id: message.chat.id,
+    user_id: message.from?.id as number,
+  };
+
+  try {
+    botService.bot.setMyCommands(commands, { scope });
+  } catch (e) {
+    console.log(e);
+  }
 
   botService.bot.editMessageText(
     i18next.t("settings-saved", {

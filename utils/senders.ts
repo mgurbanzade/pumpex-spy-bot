@@ -10,7 +10,7 @@ import {
   MAX_WINDOW_SIZE_MS,
   MIN_PERCENTAGE,
   MIN_WINDOW_SIZE_MS,
-  PAY_URL,
+  // PAY_URL,
   SUPPORT_CHAT_URL,
 } from "./constants";
 import { isSubscriptionValid } from "./payments";
@@ -196,14 +196,6 @@ export const sendSettingsOptions = (
             callback_data: "subscription",
           },
         ],
-        [
-          {
-            text: i18next.t("support", {
-              lng,
-            }),
-            url: SUPPORT_CHAT_URL,
-          },
-        ],
       ],
     },
   };
@@ -226,6 +218,33 @@ export const sendSettingsOptions = (
     i18next.t("select-settings", {
       lng,
     }),
+    options
+  );
+};
+
+export const sendHelpOptions = (msg: Message, botService: BotService) => {
+  const config = botService.getChatConfig(msg.chat.id);
+  const lng = config?.language || DEFAULT_LANGUAGE;
+
+  const options = {
+    parse_mode: "Markdown" as ParseMode,
+    reply_markup: {
+      inline_keyboard: [
+        [
+          {
+            text: i18next.t("help", {
+              lng,
+            }),
+            url: SUPPORT_CHAT_URL,
+          },
+        ],
+      ],
+    },
+  };
+
+  botService.bot.sendMessage(
+    msg.chat.id,
+    i18next.t("tap-to-open", { lng }),
     options
   );
 };
@@ -551,6 +570,210 @@ export const sendPaymentOptions = (
 
   botService.bot.editMessageText(
     i18next.t("choose-payment-method", {
+      lng: config?.language,
+    }),
+    {
+      ...options,
+      chat_id: message.chat.id,
+      message_id: message.message_id,
+    }
+  );
+};
+
+export const sendKnowledgeBase = (
+  message: Message,
+  botService: BotService,
+  action: "send" | "edit" = "edit"
+) => {
+  const config = botService.getChatConfig(message.chat.id);
+
+  const options = {
+    parse_mode: "Markdown" as ParseMode,
+    reply_markup: {
+      inline_keyboard: [
+        [
+          {
+            text: i18next.t("terms", {
+              lng: config?.language,
+            }),
+            callback_data: "terms",
+          },
+        ],
+        [
+          {
+            text: i18next.t("things-to-know", {
+              lng: config?.language,
+            }),
+            callback_data: "things-to-know",
+          },
+        ],
+        [
+          {
+            text: i18next.t("how-to-use", {
+              lng: config?.language,
+            }),
+            callback_data: "how-to-use",
+          },
+        ],
+        [
+          {
+            text: i18next.t("in-development", {
+              lng: config?.language,
+            }),
+            callback_data: "in-development",
+          },
+        ],
+        // [
+        //   {
+        //     text: i18next.t("back", {
+        //       lng: config?.language,
+        //     }),
+        //     callback_data: "knowledge",
+        //   },
+        // ],
+      ],
+    },
+  };
+
+  if (message.message_id && action === "edit") {
+    return botService.bot.editMessageText(
+      i18next.t("knowledge-base", {
+        lng: config.language,
+      }),
+      {
+        ...options,
+        message_id: message.message_id,
+        chat_id: message.chat.id,
+      }
+    );
+  }
+
+  return botService.sendMessage(
+    message.chat.id,
+    i18next.t("knowledge-base", {
+      lng: config.language,
+    }),
+    options
+  );
+};
+
+export const sendTerms = (message: Message, botService: BotService) => {
+  const config = botService.getChatConfig(message.chat.id);
+
+  const options = {
+    parse_mode: "Markdown" as ParseMode,
+    reply_markup: {
+      inline_keyboard: [
+        [
+          {
+            text: i18next.t("back", {
+              lng: config?.language,
+            }),
+            callback_data: "knowledge",
+          },
+        ],
+      ],
+    },
+  };
+
+  botService.bot.editMessageText(
+    i18next.t("terms-desc", {
+      lng: config?.language,
+    }),
+    {
+      ...options,
+      chat_id: message.chat.id,
+      message_id: message.message_id,
+    }
+  );
+};
+
+export const sendToKnow = (message: Message, botService: BotService) => {
+  const config = botService.getChatConfig(message.chat.id);
+
+  const options = {
+    parse_mode: "Markdown" as ParseMode,
+    disable_web_page_preview: true,
+    reply_markup: {
+      inline_keyboard: [
+        [
+          {
+            text: i18next.t("back", {
+              lng: config?.language,
+            }),
+            callback_data: "knowledge",
+          },
+        ],
+      ],
+    },
+  };
+
+  botService.bot.editMessageText(
+    i18next.t("to-know-desc", {
+      lng: config?.language,
+    }),
+    {
+      ...options,
+      chat_id: message.chat.id,
+      message_id: message.message_id,
+    }
+  );
+};
+
+export const sendHowToUse = (message: Message, botService: BotService) => {
+  const config = botService.getChatConfig(message.chat.id);
+
+  const options = {
+    parse_mode: "Markdown" as ParseMode,
+    disable_web_page_preview: true,
+    reply_markup: {
+      inline_keyboard: [
+        [
+          {
+            text: i18next.t("back", {
+              lng: config?.language,
+            }),
+            callback_data: "knowledge",
+          },
+        ],
+      ],
+    },
+  };
+
+  botService.bot.editMessageText(
+    i18next.t("how-to-desc", {
+      lng: config?.language,
+    }),
+    {
+      ...options,
+      chat_id: message.chat.id,
+      message_id: message.message_id,
+    }
+  );
+};
+
+export const sendInDev = (message: Message, botService: BotService) => {
+  const config = botService.getChatConfig(message.chat.id);
+
+  const options = {
+    parse_mode: "Markdown" as ParseMode,
+    disable_web_page_preview: true,
+    reply_markup: {
+      inline_keyboard: [
+        [
+          {
+            text: i18next.t("back", {
+              lng: config?.language,
+            }),
+            callback_data: "knowledge",
+          },
+        ],
+      ],
+    },
+  };
+
+  botService.bot.editMessageText(
+    i18next.t("in-dev-desc", {
       lng: config?.language,
     }),
     {

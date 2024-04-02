@@ -17,10 +17,15 @@ import {
   handleStart,
   handleStop,
   handleSelectWindowSizeInput,
+  handleHelp,
 } from "../utils/handlers";
 
 import { EVENTS } from "../utils/constants";
-import { sendPaymentSuccess, sendSettingsOptions } from "../utils/senders";
+import {
+  sendKnowledgeBase,
+  sendPaymentSuccess,
+  sendSettingsOptions,
+} from "../utils/senders";
 import type ConfigService from "./ConfigService";
 import { ChatState, type AdaptedMessage } from "../types";
 import type { Prisma } from "@prisma/client";
@@ -48,11 +53,16 @@ export default class BotService extends EventEmitter {
       maxConcurrent: 1,
       minTime: 40,
     });
+
     this.bot = new TelegramBot(process.env.TELEGRAM_API_PROD_TOKEN as string, {
       polling: true,
     });
 
     this.bot.onText(/\/start/, (msg) => handleStart(msg, this));
+    this.bot.onText(/\/help/, (msg) => handleHelp(msg, this));
+    this.bot.onText(/\/knowledge/, (msg: Message) =>
+      sendKnowledgeBase(msg, this, "send")
+    );
     this.bot.onText(/\/stop/, (msg) => handleStop(msg, this));
     this.bot.onText(/\/settings/, (msg: Message) => {
       const config = this.getChatConfig(msg.chat.id);

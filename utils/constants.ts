@@ -1,11 +1,11 @@
 import { Language } from "@prisma/client";
 
 // export const PAY_URL = "https://pumpex.app/payments/pay";
-export const PAY_URL = "https://0ee0-84-10-81-63.ngrok-free.app/payments/pay";
+// export const PAY_URL = "https://0ee0-84-10-81-63.ngrok-free.app/payments/pay";
 export const SUPPORT_CHAT_URL = "https://t.me/pumpexsupport";
 export type PlatformType = "Binance" | "Bybit" | "Coinbase";
 
-export const DEFAULT_SUBSCRIPTION_PRICE = 0.1;
+export const DEFAULT_SUBSCRIPTION_PRICE = 29;
 export const DEFAULT_LANGUAGE = Language.EN;
 export const DEFAULT_PERCENTAGE = 0.5;
 export const DEFAULT_MULTIPLIER = 1.25;
