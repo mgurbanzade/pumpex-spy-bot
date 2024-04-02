@@ -20,7 +20,6 @@ import {
   MAX_WINDOW_SIZE_MS,
   MIN_PERCENTAGE,
   MIN_WINDOW_SIZE_MS,
-  SUPPORT_CHAT_URL,
 } from "./constants";
 
 import {
@@ -311,6 +310,7 @@ export const handleSelectPairsInput = (
     if (!isValidSubscription) {
       botService.updateChatConfig(message.chat.id, {
         state: ChatState.SUBSCRIBE,
+        selectedPairs: validSymbols,
       });
 
       setTimeout(
