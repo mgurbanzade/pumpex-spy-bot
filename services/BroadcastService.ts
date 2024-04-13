@@ -2,6 +2,7 @@ import schedule from "node-schedule";
 import { ChatState } from "../types";
 import type BotService from "./BotService";
 import { sendHelpMessage } from "../utils/senders";
+import { HELP_MESSAGE_SCHEDULE } from "../utils/constants";
 
 export default class ScheduleService {
   private botService: BotService;
@@ -13,7 +14,7 @@ export default class ScheduleService {
   public async scheduleHelpMessage() {
     console.log("Scheduling help message...");
 
-    schedule.scheduleJob("35 15 * * *", async () => {
+    schedule.scheduleJob(HELP_MESSAGE_SCHEDULE, async () => {
       const config = this.botService.config.getAll();
       const chats = Object.values(config);
 

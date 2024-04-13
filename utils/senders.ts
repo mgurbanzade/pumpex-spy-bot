@@ -501,9 +501,6 @@ export const sendSubscriptionOptions = (
               amount: DEFAULT_SUBSCRIPTION_PRICE,
             }),
             callback_data: "payment-methods",
-            // web_app: {
-            //   url: PAY_URL + "?" + paramsForUrl.toString(),
-            // },
           },
         ],
         action === "edit"
@@ -825,33 +822,45 @@ export const sendHelpMessage = (
 ) => {
   const config = botService.getChatConfig(chatId);
 
+  const options = {
+    parse_mode: "Markdown" as ParseMode,
+    reply_markup: {
+      inline_keyboard: [
+        [
+          {
+            text: i18next.t("support-chat", {
+              lng: config?.language,
+            }),
+            url: SUPPORT_CHAT_URL,
+          },
+        ],
+        [
+          {
+            text: i18next.t("subscribe-to-channel", {
+              lng: config?.language,
+            }),
+            url: CHANNEL_URL,
+          },
+        ],
+        [
+          {
+            text: i18next.t("knowledge-base", {
+              lng: config?.language,
+            }),
+            callback_data: "knowledge",
+          },
+        ],
+      ],
+    },
+  };
+
   if (action === "edit" && messageId) {
     return botService.bot.editMessageText(
       i18next.t("help-message", { lng: config?.language }),
       {
         chat_id: chatId,
         message_id: messageId,
-        parse_mode: "Markdown" as ParseMode,
-        reply_markup: {
-          inline_keyboard: [
-            [
-              {
-                text: i18next.t("support-chat", {
-                  lng: config?.language,
-                }),
-                url: SUPPORT_CHAT_URL,
-              },
-            ],
-            [
-              {
-                text: i18next.t("knowledge-base", {
-                  lng: config?.language,
-                }),
-                callback_data: "knowledge",
-              },
-            ],
-          ],
-        },
+        ...options,
       }
     );
   }
@@ -860,35 +869,7 @@ export const sendHelpMessage = (
     chatId,
     i18next.t("help-message", { lng: config?.language }),
     {
-      parse_mode: "Markdown" as ParseMode,
-      reply_markup: {
-        inline_keyboard: [
-          [
-            {
-              text: i18next.t("support-chat", {
-                lng: config?.language,
-              }),
-              url: SUPPORT_CHAT_URL,
-            },
-          ],
-          [
-            {
-              text: i18next.t("subscribe-to-channel", {
-                lng: config?.language,
-              }),
-              url: CHANNEL_URL,
-            },
-          ],
-          [
-            {
-              text: i18next.t("knowledge-base", {
-                lng: config?.language,
-              }),
-              callback_data: "knowledge",
-            },
-          ],
-        ],
-      },
+      ...options,
     }
   );
 };
