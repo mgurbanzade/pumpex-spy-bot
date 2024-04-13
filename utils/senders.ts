@@ -3,6 +3,7 @@ import i18next from "../i18n";
 import type BotService from "../services/BotService";
 import { type ChatConfig, ChatState, Language } from "../types";
 import {
+  CHANNEL_URL,
   DEFAULT_LANGUAGE,
   DEFAULT_PERCENTAGE,
   DEFAULT_SUBSCRIPTION_PRICE,
@@ -222,9 +223,14 @@ export const sendSettingsOptions = (
   );
 };
 
-export const sendHelpOptions = (msg: Message, botService: BotService) => {
+export const sendHelpOptions = (
+  msg: Message,
+  botService: BotService,
+  action: "send" | "edit" = "send"
+) => {
   const config = botService.getChatConfig(msg.chat.id);
   const lng = config?.language || DEFAULT_LANGUAGE;
+  const emptyArr = [] as any[];
 
   const options = {
     parse_mode: "Markdown" as ParseMode,
@@ -238,9 +244,32 @@ export const sendHelpOptions = (msg: Message, botService: BotService) => {
             url: SUPPORT_CHAT_URL,
           },
         ],
+        action === "edit"
+          ? [
+              {
+                text: i18next.t("back", {
+                  lng,
+                }),
+                callback_data: "schedule-help-menu",
+              },
+            ]
+          : emptyArr,
       ],
     },
   };
+
+  if (action === "edit") {
+    return botService.bot.editMessageText(
+      i18next.t("tap-to-open", {
+        lng,
+      }),
+      {
+        chat_id: msg.chat.id,
+        message_id: msg.message_id,
+        ...options,
+      }
+    );
+  }
 
   botService.bot.sendMessage(
     msg.chat.id,
@@ -472,9 +501,6 @@ export const sendSubscriptionOptions = (
               amount: DEFAULT_SUBSCRIPTION_PRICE,
             }),
             callback_data: "payment-methods",
-            // web_app: {
-            //   url: PAY_URL + "?" + paramsForUrl.toString(),
-            // },
           },
         ],
         action === "edit"
@@ -587,6 +613,8 @@ export const sendKnowledgeBase = (
 ) => {
   const config = botService.getChatConfig(message.chat.id);
 
+  const emptyArr = [] as any[];
+
   const options = {
     parse_mode: "Markdown" as ParseMode,
     reply_markup: {
@@ -623,14 +651,16 @@ export const sendKnowledgeBase = (
             callback_data: "in-development",
           },
         ],
-        // [
-        //   {
-        //     text: i18next.t("back", {
-        //       lng: config?.language,
-        //     }),
-        //     callback_data: "knowledge",
-        //   },
-        // ],
+        action === "edit"
+          ? [
+              {
+                text: i18next.t("back", {
+                  lng: config?.language,
+                }),
+                callback_data: "schedule-help-menu",
+              },
+            ]
+          : emptyArr,
       ],
     },
   };
@@ -780,6 +810,66 @@ export const sendInDev = (message: Message, botService: BotService) => {
       ...options,
       chat_id: message.chat.id,
       message_id: message.message_id,
+    }
+  );
+};
+
+export const sendHelpMessage = (
+  chatId: number,
+  botService: BotService,
+  action: "send" | "edit" = "send",
+  messageId?: number
+) => {
+  const config = botService.getChatConfig(chatId);
+
+  const options = {
+    parse_mode: "Markdown" as ParseMode,
+    reply_markup: {
+      inline_keyboard: [
+        [
+          {
+            text: i18next.t("support-chat", {
+              lng: config?.language,
+            }),
+            url: SUPPORT_CHAT_URL,
+          },
+        ],
+        [
+          {
+            text: i18next.t("subscribe-to-channel", {
+              lng: config?.language,
+            }),
+            url: CHANNEL_URL,
+          },
+        ],
+        [
+          {
+            text: i18next.t("knowledge-base", {
+              lng: config?.language,
+            }),
+            callback_data: "knowledge",
+          },
+        ],
+      ],
+    },
+  };
+
+  if (action === "edit" && messageId) {
+    return botService.bot.editMessageText(
+      i18next.t("help-message", { lng: config?.language }),
+      {
+        chat_id: chatId,
+        message_id: messageId,
+        ...options,
+      }
+    );
+  }
+
+  botService.sendMessage(
+    chatId,
+    i18next.t("help-message", { lng: config?.language }),
+    {
+      ...options,
     }
   );
 };

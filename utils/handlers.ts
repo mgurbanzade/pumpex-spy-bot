@@ -41,6 +41,7 @@ import {
   sendToKnow,
   sendHowToUse,
   sendInDev,
+  sendHelpMessage,
 } from "./senders";
 import { isSubscriptionValid } from "./payments";
 import { retrievePaymentURL } from "./binance-pay";
@@ -230,9 +231,6 @@ export const handleCallbackQuery = (
     case Language.EN:
     case Language.RU:
     case Language.UA:
-      botService.updateChatConfig(message.chat.id, {
-        state: ChatState.SEARCHING,
-      });
       handleLanguageInput(message, botService, data);
       break;
     case ChatState.SETTINGS:
@@ -270,6 +268,12 @@ export const handleCallbackQuery = (
       break;
     case "in-development":
       sendInDev(message, botService);
+      break;
+    case "schedule-help-menu":
+      sendHelpMessage(message.chat.id, botService, "edit", message.message_id);
+      break;
+    case "support-chat":
+      sendHelpOptions(message, botService, "edit");
       break;
     default:
       break;
