@@ -21,6 +21,7 @@ import type {
 } from "./types";
 import { validatePayment } from "./utils/payments";
 import { verifyWalletSignature } from "./utils/wallet-pay";
+import ScheduleService from "./services/BroadcastService";
 
 const messageQueue = new Queue("messageProcessing", {
   redis: {
@@ -67,6 +68,7 @@ const binance = new BinanceAPIService();
 const coinbase = new CoinbaseAPIService();
 const configService = new ConfigService();
 const bot = new BotService(configService);
+const scheduleService = new ScheduleService(bot);
 
 const binanceSymbolsPromise = new Promise((resolve) => {
   binance.on(EVENTS.SYMBOLS_FETCHED, (symbols: string[]) => {
@@ -147,6 +149,8 @@ configService.on(EVENTS.CONFIG_LOADED, (config: ChatConfig[]) => {
   if (uniquePairs.length) {
     bot.setPairsToSubscribe(uniquePairs);
   }
+
+  scheduleService.scheduleHelpMessage();
 });
 
 const app = express();

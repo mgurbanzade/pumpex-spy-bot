@@ -2,6 +2,7 @@ import { Language } from "@prisma/client";
 
 // export const PAY_URL = "https://pumpex.app/payments/pay";
 // export const PAY_URL = "https://0ee0-84-10-81-63.ngrok-free.app/payments/pay";
+export const CHANNEL_URL = "https://t.me/pumpexapp";
 export const SUPPORT_CHAT_URL = "https://t.me/pumpexsupport";
 export type PlatformType = "Binance" | "Bybit" | "Coinbase";
 
