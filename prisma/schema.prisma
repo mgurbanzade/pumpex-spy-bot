@@ -17,6 +17,7 @@ datasource db {
 model ChatConfig {
   id               String    @id @default(auto()) @map("_id") @db.ObjectId
   chatId           Int       @unique
+  firstName        String    @default("")
   username         String?
   language         Language
   percentage       Float
@@ -25,6 +26,7 @@ model ChatConfig {
   windowSize       Int
   state            ChatState
   paidUntil        DateTime?
+  trialUntil       DateTime?
 }
 
 enum Language {

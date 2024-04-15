@@ -4,6 +4,7 @@ import {
 } from "@prisma/client";
 
 export type ChatConfig = {
+  firstName: string | null;
   username: string | null;
   percentage: number;
   selectedPairs: string[];
@@ -12,6 +13,7 @@ export type ChatConfig = {
   state: ChatState | PrismaChatState;
   language: Language | PrismaLanguage;
   paidUntil: Date | string | null;
+  trialUntil: Date | string | null;
 };
 
 export enum Language {

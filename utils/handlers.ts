@@ -14,12 +14,14 @@ import type BotService from "../services/BotService";
 import i18next from "../i18n";
 import {
   DEFAULT_LANGUAGE,
+  DEFAULT_PAIRS,
   DEFAULT_PERCENTAGE,
   DEFAULT_WINDOW_SIZE_MS,
   MAX_PERCENTAGE,
   MAX_WINDOW_SIZE_MS,
   MIN_PERCENTAGE,
   MIN_WINDOW_SIZE_MS,
+  TRIAL_DAYS,
 } from "./constants";
 
 import {
@@ -42,10 +44,12 @@ import {
   sendHowToUse,
   sendInDev,
   sendHelpMessage,
+  sendNegativeIdMessage,
 } from "./senders";
-import { isSubscriptionValid } from "./payments";
+import { isSubscriptionValid, isTrialValid } from "./payments";
 import { retrievePaymentURL } from "./binance-pay";
 import { retrieveWalletPaymentUrl } from "./wallet-pay";
+import { DateTime } from "luxon";
 
 export const setNewChat = async (
   message: Message,
@@ -57,15 +61,17 @@ export const setNewChat = async (
     : DEFAULT_LANGUAGE;
 
   const config: Prisma.ChatConfigCreateInput = {
+    firstName: message.from?.first_name as string,
     chatId: message.chat.id,
     username: message.from?.username as string,
     language,
     percentage: DEFAULT_PERCENTAGE,
     windowSize: DEFAULT_WINDOW_SIZE_MS,
-    selectedPairs: [],
+    selectedPairs: DEFAULT_PAIRS,
     stoppedExchanges: [],
     state: PrismaChatState.START,
     paidUntil: null,
+    trialUntil: DateTime.now().plus({ days: TRIAL_DAYS }).toJSDate(),
   };
 
   const res = await botService.createChatConfig(config);
@@ -74,17 +80,17 @@ export const setNewChat = async (
 };
 
 export const handleStart = async (message: Message, botService: BotService) => {
+  if (message.from?.is_bot || !message.from?.id || message.from?.id < 0) {
+    return sendNegativeIdMessage(message, botService);
+  }
+
   const currentChat = botService.getChatConfig(message.chat.id);
 
   if (!currentChat) {
     const config = await setNewChat(message, botService);
-    sendGreetings(message.chat.id, botService, config);
-    botService.updateChatConfig(message.chat.id, {
-      state: ChatState.SELECT_PAIRS,
-    });
-
-    setTimeout(() => sendSelectPairs(message, botService), 300);
-    return;
+    botService.setPairsToSubscribe(config.selectedPairs);
+    botService.setNewPumpService(message.chat.id);
+    return sendGreetings(message.chat.id, botService, config);
   }
 
   const lng = currentChat.language || DEFAULT_LANGUAGE;
@@ -113,8 +119,9 @@ export const handleStart = async (message: Message, botService: BotService) => {
   }
 
   const isValidSubscription = isSubscriptionValid(currentChat?.paidUntil);
+  const isValidTrial = isTrialValid(currentChat?.trialUntil);
 
-  if (!isValidSubscription) {
+  if (!isValidSubscription && !isValidTrial) {
     botService.updateChatConfig(message.chat.id, {
       state: ChatState.SUBSCRIBE,
     });
@@ -147,10 +154,14 @@ export const handleStart = async (message: Message, botService: BotService) => {
 };
 
 export const handleHelp = (message: Message, botService: BotService) => {
+  if (message.from?.is_bot || !message.from?.id || message.from?.id < 0) {
+    return sendNegativeIdMessage(message, botService);
+  }
   return sendHelpOptions(message, botService);
 };
 
 export const handleStop = (message: Message, botService: BotService) => {
+  if (message.from?.is_bot || !message.from?.id || message.from?.id < 0) return;
   const chatConfig = botService.getChatConfig(message.chat.id);
   const lng = chatConfig?.language || DEFAULT_LANGUAGE;
   botService.removePumpService(message.chat.id);
@@ -208,6 +219,12 @@ export const handleCallbackQuery = (
       });
       sendSelectPairs(message, botService, "edit");
       break;
+    case "select-pairs-send":
+      botService.updateChatConfig(message.chat.id, {
+        state: ChatState.SELECT_PAIRS,
+      });
+      sendSelectPairs(message, botService);
+      break;
     case "select-language":
       botService.updateChatConfig(message.chat.id, {
         state: ChatState.CHANGE_LANGUAGE,
@@ -240,9 +257,6 @@ export const handleCallbackQuery = (
       sendSettingsOptions(message, botService, "edit");
       break;
     case "subscription":
-      // botService.updateChatConfig(message.chat.id, {
-      //   state: ChatState.SUBSCRIPTION,
-      // });
       sendSubscriptionOptions(message, botService);
       break;
     case "payment-methods":
@@ -297,6 +311,7 @@ export const handleSelectPairsInput = (
   const validSymbols =
     inputSymbols.filter((sym) => availableSymbols.includes(sym)) || [];
   const isValidSubscription = isSubscriptionValid(config?.paidUntil);
+  const isValidTrial = isTrialValid(config?.trialUntil);
 
   if (invalidSymbols.length) {
     setTimeout(
@@ -311,7 +326,7 @@ export const handleSelectPairsInput = (
   }
 
   if (validSymbols.length) {
-    if (!isValidSubscription) {
+    if (!isValidSubscription && !isValidTrial) {
       botService.updateChatConfig(message.chat.id, {
         state: ChatState.SUBSCRIBE,
         selectedPairs: validSymbols,
@@ -529,6 +544,7 @@ export const handleBinancePay = async (
 
 const handleWalletPay = async (message: Message, botService: BotService) => {
   const config = botService.getChatConfig(message.chat.id);
+
   botService.bot.editMessageText(
     i18next.t("please-wait", { lng: config?.language }),
     {

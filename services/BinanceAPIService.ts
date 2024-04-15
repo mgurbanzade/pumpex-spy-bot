@@ -59,7 +59,7 @@ class BinanceAPIService extends EventEmitter {
 
     wSocket.on("open", () => {
       this.reconnectAttempts = 0;
-
+      console.log("Binance connections: ", this.connections.length);
       console.log(
         `WebSocket connection established on Binance for group ${pairsGroup}`
       );
@@ -78,6 +78,7 @@ class BinanceAPIService extends EventEmitter {
       console.log(
         `Binance webSocket connection closed with code: ${code}, reason: ${reason}`
       );
+
       console.log(
         "---------------------------------------------------------------"
       );

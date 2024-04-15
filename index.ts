@@ -19,9 +19,9 @@ import type {
   CoinbaseTradeData,
   WalletWebhookMessage,
 } from "./types";
-import { validatePayment } from "./utils/payments";
+// import { validatePayment } from "./utils/payments";
 import { verifyWalletSignature } from "./utils/wallet-pay";
-import ScheduleService from "./services/BroadcastService";
+import ScheduleService from "./services/ScheduleService";
 
 const messageQueue = new Queue("messageProcessing", {
   redis: {
@@ -151,6 +151,7 @@ configService.on(EVENTS.CONFIG_LOADED, (config: ChatConfig[]) => {
   }
 
   scheduleService.scheduleHelpMessage();
+  scheduleService.scheduleTrialCheck();
 });
 
 const app = express();

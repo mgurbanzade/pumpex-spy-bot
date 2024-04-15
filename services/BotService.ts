@@ -23,13 +23,18 @@ import {
 import { EVENTS } from "../utils/constants";
 import {
   sendKnowledgeBase,
+  sendNegativeIdMessage,
   sendPaymentSuccess,
   sendSettingsOptions,
 } from "../utils/senders";
 import type ConfigService from "./ConfigService";
 import { ChatState, type AdaptedMessage } from "../types";
 import type { Prisma } from "@prisma/client";
-import { fetchInvoice, isSubscriptionValid } from "../utils/payments";
+import {
+  fetchInvoice,
+  isSubscriptionValid,
+  isTrialValid,
+} from "../utils/payments";
 import Bottleneck from "bottleneck";
 
 export default class BotService extends EventEmitter {
@@ -65,6 +70,9 @@ export default class BotService extends EventEmitter {
     );
     this.bot.onText(/\/stop/, (msg) => handleStop(msg, this));
     this.bot.onText(/\/settings/, (msg: Message) => {
+      if (msg.from?.is_bot || !msg.from?.id || msg.from?.id < 0) {
+        return sendNegativeIdMessage(msg, this);
+      }
       const config = this.getChatConfig(msg.chat.id);
       return config ? sendSettingsOptions(msg, this) : handleStart(msg, this);
     });
@@ -74,6 +82,10 @@ export default class BotService extends EventEmitter {
     );
 
     this.bot.on("message", (msg: Message) => {
+      if (msg.from?.is_bot || !msg.from?.id || msg.from?.id < 0) {
+        return sendNegativeIdMessage(msg, this);
+      }
+
       const config = this.getChatConfig(msg.chat.id);
       if (!config) return;
 
@@ -87,6 +99,10 @@ export default class BotService extends EventEmitter {
     });
 
     this.bot.onText(/([A-Z]{3,})+/, (msg) => {
+      if (msg.from?.is_bot || !msg.from?.id || msg.from?.id < 0) {
+        return sendNegativeIdMessage(msg, this);
+      }
+
       const config = this.getChatConfig(msg.chat.id);
       if (!config) return;
 
@@ -120,12 +136,17 @@ export default class BotService extends EventEmitter {
         const isActiveSubscription = isSubscriptionValid(
           chatConfig.paidUntil as string
         );
+        const isActiveTrial = isTrialValid(chatConfig.trialUntil as string);
         const isChatStopped = chatConfig?.state === ChatState.STOPPED;
         const isExchangeStopped = chatConfig?.stoppedExchanges.includes(
           message.platform.toLowerCase()
         );
 
-        if (isExchangeStopped || isChatStopped || !isActiveSubscription)
+        if (
+          isExchangeStopped ||
+          isChatStopped ||
+          (!isActiveSubscription && !isActiveTrial)
+        )
           continue;
 
         const pumpService = this.pumpServices[key];
