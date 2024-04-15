@@ -68,6 +68,7 @@ class BybitAPIService extends EventEmitter {
         console.log(error);
       }
 
+      console.log("Bybit connections: ", this.connections.length);
       console.log(
         `WebSocket connection established on Bybit for group ${symbols}`
       );
@@ -86,6 +87,7 @@ class BybitAPIService extends EventEmitter {
       console.log(
         `Bybit webSocket connection closed with code: ${code}, reason: ${reason}`
       );
+
       console.log(
         "---------------------------------------------------------------"
       );

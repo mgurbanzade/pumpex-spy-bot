@@ -4,13 +4,13 @@
   "help": "💬 Help",
   "support-chat": "💬 Support chat",
   "stop": "🛑 Stop",
-  "greeting": "👋 Greetings!\n\nI'm Pumpex Spy 🕵️‍♂️ - a bot for spying pumps on exchanges.\n\nI'll notify if a pump is detected at {{percentage}}%.\nYou can customize the percentage in the settings.\n\nLet's start!",
+  "greeting": "👋 Greetings!\n\nI'm Pumpex Spy 🕵️‍♂️ - a bot for spying pumps on crypto exchanges.\n\n⏰ Your free trial period has just started. It ends in *{{days}} days*.\n\nTo get started, you need to complete 2 tasks:\n\n*1. Subscribe to the channel*\n\n*2. Select the trading pairs you want to track*\n\n*Let's get started!*\n\n\n_P.S Default pairs:\n\n {{pairs}}_",
   "help-message": "💡 Having difficulties?",
   "select-pairs": "✅️️ Select pairs",
   "select-percentage": "📈 Change percentage",
   "select-language": "🌍 Language",
-  "select-percentage-desc": "*Please send what percentage of pumps you want to detect.*\n\nThe lower the value, the more notifications.\n\n*Min: {{min}}%*\n\nDefault: 1%",
-  "select-pairs-desc": "*Please define comma-separated pairs you want to track*\n\n*Example:* BTCUSDT, ETHUSDT or BTC-USDT, ETH-USDT for Coinbase\n\n_P.S In case of mistakes settings will be ignored_",
+  "select-percentage-desc": "*Please send what percentage of pumps you want to detect.*\n\nThe lower the value, the more notifications.\n\n*Min: {{min}}%*\n\n*Default: {{default}}%*",
+  "select-pairs-desc": "*Please write and send me comma-separated pairs you want to track*\n\n*Example:* BTCUSDT, ETHUSDT or BTC-USDT, ETH-USDT for Coinbase\n\n_P.S In case of mistakes settings will be ignored_",
   "select-settings": "*Choose settings:*",
   "settings-saved-general": "✅ Done!\n\nPump percentage: {{percentage}}%",
   "settings-saved": "✅ Settings saved!",
@@ -53,5 +53,6 @@
   "to-know-desc": "🚨 *Notifications from Pumpex Spy are not financial advice to buy or sell.*\n\nOur goal is to keep you informed of events, freeing you from the need to sit in front of monitors for hours.\n\nThanks to the bot, you can track price changes of hundreds of pairs simultaneously and receive notifications about pumps at the earliest stages of movement.\n\n🚨 *Pumpex Spy is not responsible for the decisions you make based on notifications.*\n\n🚨 Pumpex Spy is entirely dependent on data obtained from cryptocurrency exchanges. Failures in the operation of exchanges or Telegram will affect the bot's performance.\n\n🚨 At the moment, Pumpex Spy does not support refunds. It also does not automatically charge you at the end of the subscription period.\n\n💡 [Subscribe to the channel](https://t.me/pumpexapp) for future updates.",
   "how-to-desc": "💡 *Choosing a trading pair, percentage, and time interval directly affects the frequency of notifications received.*\n\nIf you set a filter to track a 5% increase for BTCUSDT, you will hardly receive any notifications.\n\n'Bitcoin' rarely shows 5% pumps in a day, not to mention 15 minutes — which is the maximum duration of the time interval.\n\nFor higher percentages, choose more volatile pairs and a longer time interval.\n\n💡 *For quick reaction to price changes, choose a lower percentage.*\n\nThe lower the percentage - the more notifications, the higher the chance to catch a pump at an early stage. But also the higher the chance to catch “false” pumps. After all, in a volatile market, any asset can rise by 0.1% many times a day.\n\n💡 *Choosing the percentage and time interval is a compromise* between the desire to notice the price increase as early as possible and the hope to catch a really significant rise.\n\nConsider these nuances when setting filters.\n\n*Don't forget to pay attention to the increase in trading volume for a big picture.*\n\n[Contact support](https://t.me/pumpexsupport) for any questions.",
   "in-dev-desc": "🚧 The ability to customize the percentage and interval for each pair.\n\n🚧 Integration of additional exchanges.\n\n🚧 Increasing the time interval.\n\n🚧 Additional payment methods.\n\n💡 *We are also open to your suggestions.*\n\n[Contact support](https://t.me/pumpexsupport) for any questions.",
-  "subscribe-to-channel": "📢 Subscribe to the channel"
+  "subscribe-to-channel": "📢 Subscribe to the channel",
+  "trial-ended": "⏰ Your free trial has ended.\n\n💳 Please subscribe to continue receiving notifications"
 }

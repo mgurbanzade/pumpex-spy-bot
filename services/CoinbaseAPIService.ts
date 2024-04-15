@@ -83,6 +83,7 @@ class CoinbaseAPIService extends EventEmitter {
         console.log(error);
       }
 
+      console.log("Coinbase connections: ", this.connections.length);
       console.log(
         `WebSocket connection established on Coinbase for group ${pairsGroup}`
       );
@@ -97,6 +98,7 @@ class CoinbaseAPIService extends EventEmitter {
       console.log(
         `Coinbase WebSocket connection closed with code: ${code}, reason: ${reason} `
       );
+
       console.log(
         "---------------------------------------------------------------"
       );

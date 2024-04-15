@@ -13,6 +13,7 @@ import {
   MIN_WINDOW_SIZE_MS,
   // PAY_URL,
   SUPPORT_CHAT_URL,
+  TRIAL_DAYS,
 } from "./constants";
 import { isSubscriptionValid } from "./payments";
 import { DateTime } from "luxon";
@@ -27,9 +28,31 @@ export const sendGreetings = (
     i18next.t("greeting", {
       lng: config.language,
       percentage: config.percentage,
+      days: TRIAL_DAYS,
+      pairs: config.selectedPairs.join(", "),
     }),
     {
       parse_mode: "Markdown" as ParseMode,
+      reply_markup: {
+        inline_keyboard: [
+          [
+            {
+              text: i18next.t("subscribe-to-channel", {
+                lng: config?.language,
+              }),
+              url: CHANNEL_URL,
+            },
+          ],
+          [
+            {
+              text: i18next.t("select-pairs", {
+                lng: config?.language,
+              }),
+              callback_data: "select-pairs-send",
+            },
+          ],
+        ],
+      },
     }
   );
 };
@@ -611,6 +634,7 @@ export const sendKnowledgeBase = (
   botService: BotService,
   action: "send" | "edit" = "edit"
 ) => {
+  if (message.from?.is_bot || !message.from?.id || message.from?.id < 0) return;
   const config = botService.getChatConfig(message.chat.id);
 
   const emptyArr = [] as any[];
@@ -871,5 +895,51 @@ export const sendHelpMessage = (
     {
       ...options,
     }
+  );
+};
+
+export const sendTrialEndedMessage = (
+  chatId: number,
+  botService: BotService
+) => {
+  const config = botService.getChatConfig(chatId);
+
+  return botService.sendMessage(
+    chatId,
+    i18next.t("trial-ended", {
+      lng: config?.language,
+    }),
+    {
+      parse_mode: "Markdown" as ParseMode,
+      reply_markup: {
+        inline_keyboard: [
+          [
+            {
+              text: i18next.t("subscription-btn", {
+                lng: config?.language,
+                amount: DEFAULT_SUBSCRIPTION_PRICE,
+              }),
+              callback_data: "payment-methods",
+            },
+          ],
+        ],
+      },
+    }
+  );
+};
+
+export const sendNegativeIdMessage = (
+  message: Message,
+  botService: BotService
+) => {
+  console.log("--------NEGATIVE ID USER---------");
+  console.log("--------NEGATIVE ID USER---------");
+  console.log("FROM_ID: ", message.from?.id);
+  console.log("CHAT_ID: ", message.chat.id);
+  console.log("TYPE: ", message.chat.type);
+  console.log("USERNAME: ", message.chat.username);
+  return botService.sendMessage(
+    message.chat.id,
+    "Pumpex Spy does not work with your type of accounts.\n\nPlease reach out support for details: @pumpexsupport"
   );
 };

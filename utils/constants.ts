@@ -2,12 +2,26 @@ import { Language } from "@prisma/client";
 
 // export const PAY_URL = "https://pumpex.app/payments/pay";
 // export const PAY_URL = "https://0ee0-84-10-81-63.ngrok-free.app/payments/pay";
+export const TRIAL_DAYS = 3;
 export const HELP_MESSAGE_SCHEDULE = "35 15 * * *";
+export const TRIAL_END_MESSAGE_SCHEDULE = "*/12 * * *";
 export const CHANNEL_URL = "https://t.me/pumpexapp";
 export const SUPPORT_CHAT_URL = "https://t.me/pumpexsupport";
 export type PlatformType = "Binance" | "Bybit" | "Coinbase";
 
 export const DEFAULT_SUBSCRIPTION_PRICE = 29;
+export const DEFAULT_PAIRS = [
+  "BTCUSDT",
+  "ETHUSDT",
+  "BNBUSDT",
+  "SOLUSDT",
+  "XRPUSDT",
+  "TONUSDT",
+  "DOGEUSDT",
+  "ADAUSDT",
+  "DOGE-USD",
+  "BONK-USD",
+];
 export const DEFAULT_LANGUAGE = Language.EN;
 export const DEFAULT_PERCENTAGE = 0.5;
 export const DEFAULT_MULTIPLIER = 1.25;

@@ -7,6 +7,12 @@ export const isSubscriptionValid = (paidUntil: string | null | Date) => {
   return DateTime.fromISO(paidUntil) > DateTime.now();
 };
 
+export const isTrialValid = (trialUntil: string | null | Date) => {
+  if (!trialUntil) return false;
+  if (trialUntil instanceof Date) return trialUntil > new Date();
+  return DateTime.fromISO(trialUntil) > DateTime.now();
+};
+
 export const validatePayment = async (token: string) => {
   try {
     const decoded = jwt.verify(
