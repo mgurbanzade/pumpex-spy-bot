@@ -4,7 +4,7 @@ import { Language } from "@prisma/client";
 // export const PAY_URL = "https://0ee0-84-10-81-63.ngrok-free.app/payments/pay";
 export const TRIAL_DAYS = 3;
 export const HELP_MESSAGE_SCHEDULE = "35 15 * * *";
-export const TRIAL_END_MESSAGE_SCHEDULE = "*/12 * * *";
+export const TRIAL_END_MESSAGE_SCHEDULE = "0 10,20 * * *";
 export const CHANNEL_URL = "https://t.me/pumpexapp";
 export const SUPPORT_CHAT_URL = "https://t.me/pumpexsupport";
 export type PlatformType = "Binance" | "Bybit" | "Coinbase";
