@@ -11,7 +11,9 @@ const prisma = new PrismaClient({
 async function updateUsers() {
   const chats = await prisma.chatConfig.findMany({
     where: {
-      state: ChatState.STOPPED,
+      chatId: {
+        lt: 0,
+      },
     },
   });
 

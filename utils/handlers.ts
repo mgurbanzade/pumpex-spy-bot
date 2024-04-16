@@ -50,6 +50,7 @@ import { isSubscriptionValid, isTrialValid } from "./payments";
 import { retrievePaymentURL } from "./binance-pay";
 import { retrieveWalletPaymentUrl } from "./wallet-pay";
 import { DateTime } from "luxon";
+import { isNegativeChatId } from "./helpers";
 
 export const setNewChat = async (
   message: Message,
@@ -80,7 +81,7 @@ export const setNewChat = async (
 };
 
 export const handleStart = async (message: Message, botService: BotService) => {
-  if (message.from?.is_bot || !message.from?.id || message.from?.id < 0) {
+  if (isNegativeChatId(message)) {
     return sendNegativeIdMessage(message, botService);
   }
 
@@ -154,14 +155,14 @@ export const handleStart = async (message: Message, botService: BotService) => {
 };
 
 export const handleHelp = (message: Message, botService: BotService) => {
-  if (message.from?.is_bot || !message.from?.id || message.from?.id < 0) {
+  if (isNegativeChatId(message)) {
     return sendNegativeIdMessage(message, botService);
   }
   return sendHelpOptions(message, botService);
 };
 
 export const handleStop = (message: Message, botService: BotService) => {
-  if (message.from?.is_bot || !message.from?.id || message.from?.id < 0) return;
+  if (isNegativeChatId(message)) return;
   const chatConfig = botService.getChatConfig(message.chat.id);
   const lng = chatConfig?.language || DEFAULT_LANGUAGE;
   botService.removePumpService(message.chat.id);

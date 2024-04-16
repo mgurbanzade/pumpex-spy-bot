@@ -17,6 +17,7 @@ import {
 } from "./constants";
 import { isSubscriptionValid } from "./payments";
 import { DateTime } from "luxon";
+import { isNegativeChatId } from "./helpers";
 
 export const sendGreetings = (
   chatId: number,
@@ -634,7 +635,7 @@ export const sendKnowledgeBase = (
   botService: BotService,
   action: "send" | "edit" = "edit"
 ) => {
-  if (message.from?.is_bot || !message.from?.id || message.from?.id < 0) return;
+  if (isNegativeChatId(message)) return;
   const config = botService.getChatConfig(message.chat.id);
 
   const emptyArr = [] as any[];

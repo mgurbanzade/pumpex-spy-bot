@@ -1,3 +1,5 @@
+import type { Message } from "node-telegram-bot-api";
+
 export const splitIntoGroups = (arr: string[], groupSize: number) => {
   const groups = [];
 
@@ -6,4 +8,13 @@ export const splitIntoGroups = (arr: string[], groupSize: number) => {
   }
 
   return groups;
+};
+
+export const isNegativeChatId = (message: Message) => {
+  return (
+    message.chat.id < 0 ||
+    message.from?.is_bot ||
+    !message.from?.id ||
+    message.from?.id < 0
+  );
 };

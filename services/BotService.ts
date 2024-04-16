@@ -36,6 +36,7 @@ import {
   isTrialValid,
 } from "../utils/payments";
 import Bottleneck from "bottleneck";
+import { isNegativeChatId } from "../utils/helpers";
 
 export default class BotService extends EventEmitter {
   private limiter: Bottleneck;
@@ -70,7 +71,7 @@ export default class BotService extends EventEmitter {
     );
     this.bot.onText(/\/stop/, (msg) => handleStop(msg, this));
     this.bot.onText(/\/settings/, (msg: Message) => {
-      if (msg.from?.is_bot || !msg.from?.id || msg.from?.id < 0) {
+      if (isNegativeChatId(msg)) {
         return sendNegativeIdMessage(msg, this);
       }
       const config = this.getChatConfig(msg.chat.id);
@@ -82,7 +83,7 @@ export default class BotService extends EventEmitter {
     );
 
     this.bot.on("message", (msg: Message) => {
-      if (msg.from?.is_bot || !msg.from?.id || msg.from?.id < 0) {
+      if (isNegativeChatId(msg)) {
         return sendNegativeIdMessage(msg, this);
       }
 
@@ -99,7 +100,7 @@ export default class BotService extends EventEmitter {
     });
 
     this.bot.onText(/([A-Z]{3,})+/, (msg) => {
-      if (msg.from?.is_bot || !msg.from?.id || msg.from?.id < 0) {
+      if (isNegativeChatId(msg)) {
         return sendNegativeIdMessage(msg, this);
       }
 
