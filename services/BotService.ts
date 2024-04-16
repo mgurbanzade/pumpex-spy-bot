@@ -38,6 +38,7 @@ import {
 } from "../utils/payments";
 import Bottleneck from "bottleneck";
 import { isNegativeChatId } from "../utils/helpers";
+import { FORBIDDEN_ERROR, NOT_FOUND } from "../utils/errors";
 
 export default class BotService extends EventEmitter {
   private limiter: Bottleneck;
@@ -296,6 +297,10 @@ export default class BotService extends EventEmitter {
     );
   };
 
+  public async removeChatConfig(chatId: string) {
+    await this.config.delete(chatId);
+  }
+
   public async sendMessage(
     chatId: string,
     message: string,
@@ -304,8 +309,28 @@ export default class BotService extends EventEmitter {
     const wrappedFunc = this.limiter.wrap(async () => {
       try {
         await this.bot.sendMessage(chatId, message, options);
-      } catch (error) {
-        console.error("Error sending message to chat", chatId, error);
+      } catch (error: any) {
+        if (error.message === FORBIDDEN_ERROR) {
+          console.log("----------- FORBIDDEN ERROR -----------");
+          console.log("Forbidden error. Removing chat config: ", chatId);
+          this.removePumpService(chatId);
+          await this.removeChatConfig(chatId);
+          console.log("REMOVED CHAT: ", chatId);
+        }
+
+        if (error.message === NOT_FOUND) {
+          const chatConfig = this.getChatConfig(chatId);
+          console.log("----------- NOT FOUND ERROR -----------");
+          console.log("Chat not found. Stopping Pump Service: ", chatId);
+          this.removePumpService(chatId);
+          console.log("STOPPED PUMP SERVICE: ", chatId);
+
+          if (!isSubscriptionValid(chatConfig.paidUntil)) {
+            console.log("NO VALID SUBSCRIPTION. REMOVING CHAT: ", chatId);
+            await this.removeChatConfig(chatId);
+            console.log("REMOVED CHAT: ", chatId);
+          }
+        }
       }
     });
 

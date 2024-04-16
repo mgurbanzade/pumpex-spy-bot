@@ -74,6 +74,11 @@ class ConfigService extends EventEmitter {
     this.update(chatId, config);
   }
 
+  public async delete(chatId: string) {
+    delete this.config[chatId];
+    await this.prisma.chatConfig.delete({ where: { chatId } });
+  }
+
   public syncWithDB() {
     // implement
   }
