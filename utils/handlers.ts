@@ -63,7 +63,7 @@ export const setNewChat = async (
 
   const config: Prisma.ChatConfigCreateInput = {
     firstName: message.from?.first_name as string,
-    chatId: message.chat.id,
+    chatId: String(message.chat.id),
     username: message.from?.username as string,
     language,
     percentage: DEFAULT_PERCENTAGE,
@@ -85,13 +85,13 @@ export const handleStart = async (message: Message, botService: BotService) => {
     return sendNegativeIdMessage(message, botService);
   }
 
-  const currentChat = botService.getChatConfig(message.chat.id);
+  const currentChat = botService.getChatConfig(String(message.chat.id));
 
   if (!currentChat) {
     const config = await setNewChat(message, botService);
     botService.setPairsToSubscribe(config.selectedPairs);
-    botService.setNewPumpService(message.chat.id);
-    return sendGreetings(message.chat.id, botService, config);
+    botService.setNewPumpService(String(message.chat.id));
+    return sendGreetings(String(message.chat.id), botService, config);
   }
 
   const lng = currentChat.language || DEFAULT_LANGUAGE;
@@ -123,7 +123,7 @@ export const handleStart = async (message: Message, botService: BotService) => {
   const isValidTrial = isTrialValid(currentChat?.trialUntil);
 
   if (!isValidSubscription && !isValidTrial) {
-    botService.updateChatConfig(message.chat.id, {
+    botService.updateChatConfig(String(message.chat.id), {
       state: ChatState.SUBSCRIBE,
     });
 
@@ -131,7 +131,7 @@ export const handleStart = async (message: Message, botService: BotService) => {
   }
 
   if (currentChat && !currentChat?.selectedPairs?.length) {
-    botService.updateChatConfig(message.chat.id, {
+    botService.updateChatConfig(String(message.chat.id), {
       state: ChatState.SELECT_PAIRS,
     });
 
@@ -140,14 +140,14 @@ export const handleStart = async (message: Message, botService: BotService) => {
 
   if (currentChat && currentChat?.selectedPairs?.length) {
     if (currentChat.state === ChatState.STOPPED) {
-      botService.updateChatConfig(message.chat.id, {
+      botService.updateChatConfig(String(message.chat.id), {
         selectedPairs: currentChat.selectedPairs,
         state: ChatState.SEARCHING,
       });
 
       botService.setPairsToSubscribe(currentChat.selectedPairs);
-      botService.setNewPumpService(message.chat.id);
-      return sendCurrentPairs(message.chat.id, botService);
+      botService.setNewPumpService(String(message.chat.id));
+      return sendCurrentPairs(String(message.chat.id), botService);
     }
 
     return sendAlreadyStarted(message, botService, currentChat);
@@ -163,14 +163,17 @@ export const handleHelp = (message: Message, botService: BotService) => {
 
 export const handleStop = (message: Message, botService: BotService) => {
   if (isNegativeChatId(message)) return;
-  const chatConfig = botService.getChatConfig(message.chat.id);
+  const chatConfig = botService.getChatConfig(String(message.chat.id));
   const lng = chatConfig?.language || DEFAULT_LANGUAGE;
-  botService.removePumpService(message.chat.id);
-  botService.checkAndRemoveUselessSubscriptions(message.chat.id);
-  botService.updateChatConfig(message.chat.id, {
+  botService.removePumpService(String(message.chat.id));
+  botService.checkAndRemoveUselessSubscriptions(String(message.chat.id));
+  botService.updateChatConfig(String(message.chat.id), {
     state: ChatState.STOPPED,
   });
-  botService.sendMessage(message.chat.id, i18next.t("stopped", { lng }));
+  botService.sendMessage(
+    String(message.chat.id),
+    i18next.t("stopped", { lng })
+  );
 };
 
 export const handleStopExchanges = (
@@ -178,16 +181,16 @@ export const handleStopExchanges = (
   botService: BotService,
   data: string
 ) => {
-  const config = botService.getChatConfig(message.chat.id);
+  const config = botService.getChatConfig(String(message.chat.id));
   if (!config) return;
 
-  botService.updateChatConfig(message.chat.id, {
+  botService.updateChatConfig(String(message.chat.id), {
     stoppedExchanges: [...config.stoppedExchanges, data],
     state: ChatState.SEARCHING,
   });
 
   botService.sendMessage(
-    message.chat.id,
+    String(message.chat.id),
     i18next.t("settings-saved", {
       lng: config.language,
     })
@@ -203,37 +206,37 @@ export const handleCallbackQuery = (
 
   switch (data) {
     case "select-percentage":
-      botService.updateChatConfig(message.chat.id, {
+      botService.updateChatConfig(String(message.chat.id), {
         state: ChatState.SELECT_PERCENTAGE,
       });
       sendPercentageOptions(message, botService);
       break;
     case ChatState.SELECT_WINDOW_SIZE:
-      botService.updateChatConfig(message.chat.id, {
+      botService.updateChatConfig(String(message.chat.id), {
         state: ChatState.SELECT_WINDOW_SIZE,
       });
       sendWindowSizeOptions(message, botService);
       break;
     case "select-pairs":
-      botService.updateChatConfig(message.chat.id, {
+      botService.updateChatConfig(String(message.chat.id), {
         state: ChatState.SELECT_PAIRS,
       });
       sendSelectPairs(message, botService, "edit");
       break;
     case "select-pairs-send":
-      botService.updateChatConfig(message.chat.id, {
+      botService.updateChatConfig(String(message.chat.id), {
         state: ChatState.SELECT_PAIRS,
       });
       sendSelectPairs(message, botService);
       break;
     case "select-language":
-      botService.updateChatConfig(message.chat.id, {
+      botService.updateChatConfig(String(message.chat.id), {
         state: ChatState.CHANGE_LANGUAGE,
       });
       sendSelectLanguages(message, botService);
       break;
     case "stop-exchanges":
-      botService.updateChatConfig(message.chat.id, {
+      botService.updateChatConfig(String(message.chat.id), {
         state: ChatState.UNSUBSCRIBE_EXCHANGES,
       });
       sendExchangesOptions(message, botService);
@@ -252,7 +255,7 @@ export const handleCallbackQuery = (
       handleLanguageInput(message, botService, data);
       break;
     case ChatState.SETTINGS:
-      botService.updateChatConfig(message.chat.id, {
+      botService.updateChatConfig(String(message.chat.id), {
         state: ChatState.SETTINGS,
       });
       sendSettingsOptions(message, botService, "edit");
@@ -285,7 +288,12 @@ export const handleCallbackQuery = (
       sendInDev(message, botService);
       break;
     case "schedule-help-menu":
-      sendHelpMessage(message.chat.id, botService, "edit", message.message_id);
+      sendHelpMessage(
+        String(message.chat.id),
+        botService,
+        "edit",
+        message.message_id
+      );
       break;
     case "support-chat":
       sendHelpOptions(message, botService, "edit");
@@ -299,7 +307,7 @@ export const handleSelectPairsInput = (
   message: Message,
   botService: BotService
 ) => {
-  const config = botService.getChatConfig(message.chat.id);
+  const config = botService.getChatConfig(String(message.chat.id));
   const availableSymbols = botService.getAvailableSymbols();
   const inputSymbols =
     message.text
@@ -318,7 +326,7 @@ export const handleSelectPairsInput = (
     setTimeout(
       () =>
         sendInvalidPairs(
-          message.chat.id,
+          String(message.chat.id),
           botService,
           invalidSymbols.join(", ")
         ),
@@ -328,7 +336,7 @@ export const handleSelectPairsInput = (
 
   if (validSymbols.length) {
     if (!isValidSubscription && !isValidTrial) {
-      botService.updateChatConfig(message.chat.id, {
+      botService.updateChatConfig(String(message.chat.id), {
         state: ChatState.SUBSCRIBE,
         selectedPairs: validSymbols,
       });
@@ -339,18 +347,18 @@ export const handleSelectPairsInput = (
       );
 
       return botService.sendMessage(
-        message.chat.id,
+        String(message.chat.id),
         i18next.t("settings-saved", { lng: config?.language })
       );
     }
-    botService.updateChatConfig(message.chat.id, {
+    botService.updateChatConfig(String(message.chat.id), {
       selectedPairs: validSymbols,
       state: ChatState.SEARCHING,
     });
 
     botService.setPairsToSubscribe(validSymbols);
-    botService.setNewPumpService(message.chat.id);
-    sendCurrentPairs(message.chat.id, botService);
+    botService.setNewPumpService(String(message.chat.id));
+    sendCurrentPairs(String(message.chat.id), botService);
   }
 };
 
@@ -358,7 +366,7 @@ export const handlePercentageInput = (
   message: Message,
   botService: BotService
 ) => {
-  const config = botService.getChatConfig(message.chat.id);
+  const config = botService.getChatConfig(String(message.chat.id));
   const match = message.text?.match(/(100(\.0+)?|[0-9]|[1-9][0-9])(\.\d+)?%?/);
   const percentage = match ? parseFloat(match[0]) : 0;
 
@@ -367,13 +375,13 @@ export const handlePercentageInput = (
     percentage >= MIN_PERCENTAGE &&
     percentage <= MAX_PERCENTAGE
   ) {
-    botService.updateChatConfig(message.chat.id, {
+    botService.updateChatConfig(String(message.chat.id), {
       percentage,
       state: ChatState.SEARCHING,
     });
 
     botService.sendMessage(
-      message.chat.id,
+      String(message.chat.id),
       i18next.t("settings-saved-general", {
         percentage,
         lng: config?.language,
@@ -381,11 +389,11 @@ export const handlePercentageInput = (
       { parse_mode: "Markdown" as ParseMode }
     );
 
-    return botService.setNewPumpService(message.chat.id);
+    return botService.setNewPumpService(String(message.chat.id));
   }
 
   return botService.sendMessage(
-    message.chat.id,
+    String(message.chat.id),
     i18next.t("invalid-percentage", { lng: config?.language }),
     { parse_mode: "Markdown" as ParseMode }
   );
@@ -396,7 +404,7 @@ export const handleLanguageInput = (
   botService: BotService,
   language: Language
 ) => {
-  botService.updateChatConfig(message.chat.id, {
+  botService.updateChatConfig(String(message.chat.id), {
     language,
     state: ChatState.SEARCHING,
   });
@@ -436,15 +444,15 @@ export const handleLanguageInput = (
       message_id: message.message_id,
     }
   );
-  botService.setNewPumpService(message.chat.id);
+  botService.setNewPumpService(String(message.chat.id));
 };
 
 const handleSetDefaultExchanges = (
   message: Message,
   botService: BotService
 ) => {
-  const config = botService.getChatConfig(message.chat.id);
-  botService.updateChatConfig(message.chat.id, {
+  const config = botService.getChatConfig(String(message.chat.id));
+  botService.updateChatConfig(String(message.chat.id), {
     stoppedExchanges: [],
     state: ChatState.SEARCHING,
   });
@@ -459,14 +467,14 @@ const handleSetDefaultExchanges = (
     }
   );
 
-  botService.setNewPumpService(message.chat.id);
+  botService.setNewPumpService(String(message.chat.id));
 };
 
 export const handleSelectWindowSizeInput = (
   message: Message,
   botService: BotService
 ) => {
-  const config = botService.getChatConfig(message.chat.id);
+  const config = botService.getChatConfig(String(message.chat.id));
   const match = message.text?.match(/^(0\.5|([1-9](\.\d+)?|10(\.0+)?)?)$/);
   const windowSizeInMinutes = match ? parseFloat(match[0]) : 0;
   const windowSizeMs = windowSizeInMinutes * 60000;
@@ -476,22 +484,22 @@ export const handleSelectWindowSizeInput = (
     windowSizeMs >= MIN_WINDOW_SIZE_MS &&
     windowSizeMs <= MAX_WINDOW_SIZE_MS
   ) {
-    botService.updateChatConfig(message.chat.id, {
+    botService.updateChatConfig(String(message.chat.id), {
       windowSize: windowSizeMs,
       state: ChatState.SEARCHING,
     });
 
     botService.sendMessage(
-      message.chat.id,
+      String(message.chat.id),
       i18next.t("settings-saved", { lng: config?.language }),
       { parse_mode: "Markdown" as ParseMode }
     );
 
-    return botService.setNewPumpService(message.chat.id);
+    return botService.setNewPumpService(String(message.chat.id));
   }
 
   return botService.sendMessage(
-    message.chat.id,
+    String(message.chat.id),
     i18next.t("invalid-window-size", { lng: config?.language }),
     { parse_mode: "Markdown" as ParseMode }
   );
@@ -501,7 +509,7 @@ export const handleBinancePay = async (
   message: Message,
   botService: BotService
 ) => {
-  const config = botService.getChatConfig(message.chat.id);
+  const config = botService.getChatConfig(String(message.chat.id));
   botService.bot.editMessageText(
     i18next.t("please-wait", { lng: config?.language }),
     {
@@ -510,7 +518,9 @@ export const handleBinancePay = async (
     }
   );
 
-  const paymentUrl = await retrievePaymentURL({ chatId: message.chat.id });
+  const paymentUrl = await retrievePaymentURL({
+    chatId: String(message.chat.id),
+  });
 
   if (paymentUrl) {
     setTimeout(
@@ -544,7 +554,7 @@ export const handleBinancePay = async (
 };
 
 const handleWalletPay = async (message: Message, botService: BotService) => {
-  const config = botService.getChatConfig(message.chat.id);
+  const config = botService.getChatConfig(String(message.chat.id));
 
   botService.bot.editMessageText(
     i18next.t("please-wait", { lng: config?.language }),
@@ -555,7 +565,7 @@ const handleWalletPay = async (message: Message, botService: BotService) => {
   );
 
   const paymentUrl = await retrieveWalletPaymentUrl({
-    chatId: message.chat.id,
+    chatId: String(message.chat.id),
   });
 
   if (paymentUrl) {

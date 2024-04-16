@@ -22,6 +22,7 @@ import {
 
 import { EVENTS } from "../utils/constants";
 import {
+  sendHelpMessage,
   sendKnowledgeBase,
   sendNegativeIdMessage,
   sendPaymentSuccess,
@@ -74,7 +75,7 @@ export default class BotService extends EventEmitter {
       if (isNegativeChatId(msg)) {
         return sendNegativeIdMessage(msg, this);
       }
-      const config = this.getChatConfig(msg.chat.id);
+      const config = this.getChatConfig(String(msg.chat.id));
       return config ? sendSettingsOptions(msg, this) : handleStart(msg, this);
     });
 
@@ -87,7 +88,7 @@ export default class BotService extends EventEmitter {
         return sendNegativeIdMessage(msg, this);
       }
 
-      const config = this.getChatConfig(msg.chat.id);
+      const config = this.getChatConfig(String(msg.chat.id));
       if (!config) return;
 
       if (config.state === ChatState.SELECT_PERCENTAGE) {
@@ -104,7 +105,7 @@ export default class BotService extends EventEmitter {
         return sendNegativeIdMessage(msg, this);
       }
 
-      const config = this.getChatConfig(msg.chat.id);
+      const config = this.getChatConfig(String(msg.chat.id));
       if (!config) return;
 
       if (config.state === ChatState.SELECT_PAIRS) {
@@ -119,7 +120,7 @@ export default class BotService extends EventEmitter {
     for (let chatId in chatConfigs) {
       const chatConfig = chatConfigs[chatId];
       this.pumpServices[chatId] = new PumpService(
-        { ...chatConfig, chatId: Number(chatId) },
+        { ...chatConfig, chatId },
         this
       );
     }
@@ -128,7 +129,7 @@ export default class BotService extends EventEmitter {
   public handleMessage(message: AdaptedMessage) {
     if (Object.keys(this.pumpServices).length > 0) {
       for (let key in this.pumpServices) {
-        const chatConfig = this.getChatConfig(Number(key));
+        const chatConfig = this.getChatConfig(key);
         if (!chatConfig) {
           console.log("Chat config not found for chatId", key);
           continue;
@@ -162,23 +163,23 @@ export default class BotService extends EventEmitter {
   }
 
   public updateChatConfig(
-    chatId: number,
+    chatId: string,
     config: Partial<Prisma.ChatConfigUpdateInput>
   ) {
     return this.config.set(chatId, config);
   }
 
-  public getChatConfig(chatId: number): ChatConfig {
+  public getChatConfig(chatId: string): ChatConfig {
     return this.config.get(chatId);
   }
 
-  public setNewPumpService(chatId: number) {
+  public setNewPumpService(chatId: string) {
     const config = this.getChatConfig(chatId);
 
     this.pumpServices[chatId] = new PumpService({ chatId, ...config }, this);
   }
 
-  public removePumpService(chatId: number) {
+  public removePumpService(chatId: string) {
     this.pumpServices = omit(this.pumpServices, chatId);
   }
 
@@ -197,7 +198,7 @@ export default class BotService extends EventEmitter {
     this.emit(EVENTS.SUBSCRIPTIONS_UPDATED, this.pairsToSubscribe);
   }
 
-  public checkAndRemoveUselessSubscriptions(chatId: number) {
+  public checkAndRemoveUselessSubscriptions(chatId: string) {
     const allConfigs = this.config.getAll();
     const chatConfig = this.getChatConfig(chatId);
     const uselessSubscriptions = new Set(chatConfig?.selectedPairs);
@@ -205,7 +206,7 @@ export default class BotService extends EventEmitter {
     const allOtherPairs = new Set<string>();
 
     Object.keys(allConfigs).forEach((id) => {
-      if (parseInt(id) !== chatId) {
+      if (id !== chatId) {
         allConfigs[id as any].selectedPairs.forEach((pair) =>
           allOtherPairs.add(pair)
         );
@@ -238,13 +239,13 @@ export default class BotService extends EventEmitter {
 
     if (invoiceData?.status === "success" && invoice.status === "paid") {
       const chatId = invoice.order_id;
-      this.updateChatConfig(Number(chatId), {
+      this.updateChatConfig(chatId, {
         paidUntil: subscriptionExpiresAt.toISO(),
         state: ChatState.SEARCHING,
       });
 
       sendPaymentSuccess(
-        Number(chatId),
+        chatId,
         this,
         subscriptionExpiresAt.toFormat("dd.MM.yyyy")
       );
@@ -279,29 +280,33 @@ export default class BotService extends EventEmitter {
     const subscriptionExpiresAt = transactTime.plus({ days: 30 });
     const chatId = data?.payload?.customData;
 
-    const chatConfig = this.getChatConfig(Number(chatId));
+    const chatConfig = this.getChatConfig(chatId);
 
     if (isSubscriptionValid(chatConfig.paidUntil)) return;
 
-    this.updateChatConfig(Number(chatId), {
+    this.updateChatConfig(chatId, {
       paidUntil: subscriptionExpiresAt.toISO(),
       state: ChatState.SEARCHING,
     });
 
     sendPaymentSuccess(
-      Number(chatId),
+      chatId,
       this,
       subscriptionExpiresAt.toFormat("dd.MM.yyyy")
     );
   };
 
   public async sendMessage(
-    chatId: number,
+    chatId: string,
     message: string,
     options?: SendMessageOptions
   ) {
     const wrappedFunc = this.limiter.wrap(async () => {
-      this.bot.sendMessage(chatId, message, options);
+      try {
+        await this.bot.sendMessage(chatId, message, options);
+      } catch (error) {
+        console.error("Error sending message to chat", chatId, error);
+      }
     });
 
     try {

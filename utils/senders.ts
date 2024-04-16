@@ -20,7 +20,7 @@ import { DateTime } from "luxon";
 import { isNegativeChatId } from "./helpers";
 
 export const sendGreetings = (
-  chatId: number,
+  chatId: string,
   botService: BotService,
   config: ChatConfig
 ) => {
@@ -63,7 +63,7 @@ export const sendSelectPairs = (
   botService: BotService,
   action: "send" | "edit" = "send"
 ) => {
-  const chatConfig = botService.getChatConfig(message.chat.id);
+  const chatConfig = botService.getChatConfig(String(message.chat.id));
   const withBackButton =
     action === "edit"
       ? {
@@ -115,7 +115,7 @@ export const sendAlreadyStarted = (
   config: ChatConfig
 ) => {
   return botService.sendMessage(
-    message.chat.id,
+    String(message.chat.id),
     i18next.t("already-started", {
       lng: config.language,
       percentage: config.percentage,
@@ -126,7 +126,7 @@ export const sendAlreadyStarted = (
   );
 };
 
-export const sendCurrentPairs = (chatId: number, botService: BotService) => {
+export const sendCurrentPairs = (chatId: string, botService: BotService) => {
   const chatConfig = botService.getChatConfig(chatId);
 
   if (chatConfig?.selectedPairs.length) {
@@ -152,7 +152,7 @@ export const sendCurrentPairs = (chatId: number, botService: BotService) => {
 };
 
 export const sendInvalidPairs = (
-  chatId: number,
+  chatId: string,
   botService: BotService,
   invalidPairs: string
 ) => {
@@ -172,7 +172,7 @@ export const sendSettingsOptions = (
   botService: BotService,
   action: "edit" | "send" = "send"
 ) => {
-  const config = botService.getChatConfig(msg.chat.id);
+  const config = botService.getChatConfig(String(msg.chat.id));
   const lng = config?.language || DEFAULT_LANGUAGE;
 
   const options = {
@@ -252,7 +252,7 @@ export const sendHelpOptions = (
   botService: BotService,
   action: "send" | "edit" = "send"
 ) => {
-  const config = botService.getChatConfig(msg.chat.id);
+  const config = botService.getChatConfig(String(msg.chat.id));
   const lng = config?.language || DEFAULT_LANGUAGE;
   const emptyArr = [] as any[];
 
@@ -306,7 +306,7 @@ export const sendExchangesOptions = (
   message: Message,
   botService: BotService
 ) => {
-  const config = botService.getChatConfig(message.chat.id);
+  const config = botService.getChatConfig(String(message.chat.id));
   const lng = config?.language || DEFAULT_LANGUAGE;
 
   const options = {
@@ -363,7 +363,7 @@ export const sendPercentageOptions = (
   message: Message,
   botService: BotService
 ) => {
-  const config = botService.getChatConfig(message.chat.id);
+  const config = botService.getChatConfig(String(message.chat.id));
   const options = {
     parse_mode: "Markdown" as ParseMode,
     reply_markup: {
@@ -397,7 +397,7 @@ export const sendSelectLanguages = (
   message: Message,
   botService: BotService
 ) => {
-  const config = botService.getChatConfig(message.chat.id);
+  const config = botService.getChatConfig(String(message.chat.id));
   const options = {
     parse_mode: "Markdown" as ParseMode,
     reply_markup: {
@@ -438,7 +438,7 @@ export const sendWindowSizeOptions = (
   message: Message,
   botService: BotService
 ) => {
-  const config = botService.getChatConfig(message.chat.id);
+  const config = botService.getChatConfig(String(message.chat.id));
   const options = {
     parse_mode: "Markdown" as ParseMode,
     reply_markup: {
@@ -475,7 +475,7 @@ export const sendSubscriptionOptions = (
   botService: BotService,
   action: "edit" | "send" = "edit"
 ) => {
-  const config = botService.getChatConfig(message.chat.id);
+  const config = botService.getChatConfig(String(message.chat.id));
   const opts = {
     parse_mode: "Markdown" as ParseMode,
     message_id: message.message_id,
@@ -543,7 +543,7 @@ export const sendSubscriptionOptions = (
 
   if (action === "send") {
     return botService.sendMessage(
-      message.chat.id,
+      String(message.chat.id),
       i18next.t("subscription-desc", {
         lng: config?.language,
       }),
@@ -564,7 +564,7 @@ export const sendSubscriptionOptions = (
 };
 
 export const sendPaymentSuccess = (
-  chatId: number,
+  chatId: string,
   botService: BotService,
   date: string
 ) => {
@@ -585,7 +585,7 @@ export const sendPaymentOptions = (
   message: Message,
   botService: BotService
 ) => {
-  const config = botService.getChatConfig(message.chat.id);
+  const config = botService.getChatConfig(String(message.chat.id));
   const options = {
     parse_mode: "Markdown" as ParseMode,
     reply_markup: {
@@ -636,9 +636,7 @@ export const sendKnowledgeBase = (
   action: "send" | "edit" = "edit"
 ) => {
   if (isNegativeChatId(message)) return;
-  const config = botService.getChatConfig(message.chat.id);
-
-  const emptyArr = [] as any[];
+  const config = botService.getChatConfig(String(message.chat.id));
 
   const options = {
     parse_mode: "Markdown" as ParseMode,
@@ -676,16 +674,6 @@ export const sendKnowledgeBase = (
             callback_data: "in-development",
           },
         ],
-        action === "edit"
-          ? [
-              {
-                text: i18next.t("back", {
-                  lng: config?.language,
-                }),
-                callback_data: "schedule-help-menu",
-              },
-            ]
-          : emptyArr,
       ],
     },
   };
@@ -704,7 +692,7 @@ export const sendKnowledgeBase = (
   }
 
   return botService.sendMessage(
-    message.chat.id,
+    String(message.chat.id),
     i18next.t("knowledge-base", {
       lng: config.language,
     }),
@@ -713,7 +701,7 @@ export const sendKnowledgeBase = (
 };
 
 export const sendTerms = (message: Message, botService: BotService) => {
-  const config = botService.getChatConfig(message.chat.id);
+  const config = botService.getChatConfig(String(message.chat.id));
 
   const options = {
     parse_mode: "Markdown" as ParseMode,
@@ -744,7 +732,7 @@ export const sendTerms = (message: Message, botService: BotService) => {
 };
 
 export const sendToKnow = (message: Message, botService: BotService) => {
-  const config = botService.getChatConfig(message.chat.id);
+  const config = botService.getChatConfig(String(message.chat.id));
 
   const options = {
     parse_mode: "Markdown" as ParseMode,
@@ -776,7 +764,7 @@ export const sendToKnow = (message: Message, botService: BotService) => {
 };
 
 export const sendHowToUse = (message: Message, botService: BotService) => {
-  const config = botService.getChatConfig(message.chat.id);
+  const config = botService.getChatConfig(String(message.chat.id));
 
   const options = {
     parse_mode: "Markdown" as ParseMode,
@@ -808,7 +796,7 @@ export const sendHowToUse = (message: Message, botService: BotService) => {
 };
 
 export const sendInDev = (message: Message, botService: BotService) => {
-  const config = botService.getChatConfig(message.chat.id);
+  const config = botService.getChatConfig(String(message.chat.id));
 
   const options = {
     parse_mode: "Markdown" as ParseMode,
@@ -840,7 +828,7 @@ export const sendInDev = (message: Message, botService: BotService) => {
 };
 
 export const sendHelpMessage = (
-  chatId: number,
+  chatId: string,
   botService: BotService,
   action: "send" | "edit" = "send",
   messageId?: number
@@ -900,7 +888,7 @@ export const sendHelpMessage = (
 };
 
 export const sendTrialEndedMessage = (
-  chatId: number,
+  chatId: string,
   botService: BotService
 ) => {
   const config = botService.getChatConfig(chatId);
@@ -940,7 +928,7 @@ export const sendNegativeIdMessage = (
   console.log("TYPE: ", message.chat.type);
   console.log("USERNAME: ", message.chat.username);
   return botService.sendMessage(
-    message.chat.id,
+    String(message.chat.id),
     "Pumpex Spy does not work with your type of accounts.\n\nPlease reach out support for details: @pumpexsupport"
   );
 };

@@ -5,9 +5,9 @@ const headers = new Headers({
 });
 
 class PaymentService {
-  public async processPayment(payment: Payment): Promise<PaymentResult> {
-    // ... process payment
-  }
+  // public async processPayment(payment: Payment): Promise<PaymentResult> {
+  //   // ... process payment
+  // }
 }
 
 export default PaymentService;

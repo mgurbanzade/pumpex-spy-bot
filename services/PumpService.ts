@@ -14,7 +14,7 @@ type Config = {
   language: Language;
   percentage: number;
   windowSize: number;
-  chatId: number;
+  chatId: string;
   selectedPairs: string[];
 };
 

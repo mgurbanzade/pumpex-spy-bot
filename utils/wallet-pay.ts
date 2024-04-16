@@ -5,7 +5,7 @@ import { DEFAULT_SUBSCRIPTION_PRICE } from "./constants";
 export const retrieveWalletPaymentUrl = async ({
   chatId,
 }: {
-  chatId: number;
+  chatId: string;
 }) => {
   if (!chatId) {
     return new Response("chatId is required", {

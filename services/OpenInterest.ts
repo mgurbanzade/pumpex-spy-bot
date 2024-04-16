@@ -32,16 +32,15 @@ class OpenInterestService {
 
   private async fetchSymbols() {
     try {
-      const response = await fetch(`${this.baseUrl}/api/v3/exchangeInfo`);
-      const data = await response.json();
-
-      if (data?.symbols) {
-        this.symbols = data.symbols
-          .filter(
-            (item) => item.symbol.includes("USDT") && item.status === "TRADING"
-          )
-          .map((item: any) => item.symbol);
-      }
+      // const response = await fetch(`${this.baseUrl}/api/v3/exchangeInfo`);
+      // const data = await response.json();
+      // if (data?.symbols) {
+      //   this.symbols = data.symbols
+      //     .filter(
+      //       (item) => item.symbol.includes("USDT") && item.status === "TRADING"
+      //     )
+      //     .map((item: any) => item.symbol);
+      // }
     } catch (error) {
       console.error("Error fetching altcoin symbols:", error);
       return [];

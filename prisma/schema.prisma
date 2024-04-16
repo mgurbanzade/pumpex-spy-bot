@@ -16,7 +16,7 @@ datasource db {
 
 model ChatConfig {
   id               String    @id @default(auto()) @map("_id") @db.ObjectId
-  chatId           BigInt    @unique
+  chatId           String    @unique
   firstName        String    @default("")
   username         String?
   language         Language

@@ -1,29 +1,22 @@
 import { ChatState, type ChatConfig } from "@prisma/client";
 import { DateTime } from "luxon";
 import { DEFAULT_PAIRS } from "./constants";
-
-const { PrismaClient } = require("@prisma/client");
+import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient({
   log: ["error"],
 });
 
 async function updateUsers() {
-  const chats = await prisma.chatConfig.findMany({
-    where: {
-      chatId: {
-        lt: 0,
-      },
-    },
-  });
+  const chats = await prisma.chatConfig.findMany();
 
-  console.log(chats);
-
-  // // const trialUntil = DateTime.now().plus({ days: 3 }).toJSDate();
   // const updateUserPromises = chats.map((chat: ChatConfig) =>
-  //   prisma.chatConfig.delete({
+  //   prisma.chatConfig.update({
   //     where: {
   //       id: chat.id,
+  //     },
+  //     data: {
+  //       chatId: String(chat.chatId) as any,
   //     },
   //   })
   // );

@@ -11,10 +11,5 @@ export const splitIntoGroups = (arr: string[], groupSize: number) => {
 };
 
 export const isNegativeChatId = (message: Message) => {
-  return (
-    message.chat.id < 0 ||
-    message.from?.is_bot ||
-    !message.from?.id ||
-    message.from?.id < 0
-  );
+  return message.chat.id < 0;
 };

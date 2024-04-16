@@ -16,7 +16,7 @@ const generateSignature = ({
   return signature;
 };
 
-export async function retrievePaymentURL({ chatId }: { chatId: number }) {
+export async function retrievePaymentURL({ chatId }: { chatId: string }) {
   if (!chatId) {
     return new Response("chatId is required", {
       status: 400,

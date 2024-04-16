@@ -40,12 +40,12 @@ class ConfigService extends EventEmitter {
     this.config = {
       ...this.config,
       [data.chatId]: rest,
-    };
+    } as any;
 
     return this.prisma.chatConfig.create({ data });
   }
 
-  public get(chatId: number): ChatConfig {
+  public get(chatId: string): ChatConfig {
     return this.config[chatId];
   }
 
@@ -53,7 +53,7 @@ class ConfigService extends EventEmitter {
     return this.config;
   }
 
-  public async update(chatId: number, data: Prisma.ChatConfigUpdateInput) {
+  public async update(chatId: string, data: Prisma.ChatConfigUpdateInput) {
     const res = await this.prisma.chatConfig.update({
       where: { chatId },
       data,
@@ -63,7 +63,7 @@ class ConfigService extends EventEmitter {
   }
 
   public async set(
-    chatId: number,
+    chatId: string,
     config: Partial<Prisma.ChatConfigUpdateInput>
   ) {
     (this.config as any)[chatId] = {
