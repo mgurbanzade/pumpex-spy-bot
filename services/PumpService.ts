@@ -59,7 +59,7 @@ class PumpService {
 
       const link =
         platform === "Binance"
-          ? getBinanceFuturesURL(lng, pair)
+          ? getBinanceFuturesURL(pair)
           : platform === "Bybit"
           ? getBybitFuturesURL(pair)
           : getCoinbaseURL(pair);

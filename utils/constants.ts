@@ -48,8 +48,8 @@ export const DISABLED_PAIRS = [
   "cbETH-USD",
 ];
 
-export const getBinanceFuturesURL = (lang: string, pair: string) => {
-  return `https://binance.com/${lang}/futures/${pair}`;
+export const getBinanceFuturesURL = (pair: string) => {
+  return `https://binance.com/futures/${pair}`;
 };
 
 export const getBybitFuturesURL = (pair: string) => {
