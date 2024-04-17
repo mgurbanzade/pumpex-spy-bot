@@ -55,6 +55,10 @@ class PumpService {
       const lng = this.config.language;
       const { pair, minPrice, lastPrice, diff, volumeChange } = checkResult;
 
+      if (this.config.chatId === "437439778" || "843402430") {
+        console.log("Pump detected:", checkResult);
+      }
+
       const currency = platform === "Coinbase" ? pair.split("-")[1] : "USDT";
 
       const link =
