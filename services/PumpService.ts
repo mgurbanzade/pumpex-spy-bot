@@ -55,7 +55,7 @@ class PumpService {
       const lng = this.config.language;
       const { pair, minPrice, lastPrice, diff, volumeChange } = checkResult;
 
-      if (this.config.chatId === "437439778" || "843402430") {
+      if (this.config.chatId === "437439778") {
         console.log("Pump detected:", checkResult);
       }
 

@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "bun ./index.ts",
+    "cluster": "pm2 start ./index.ts --name pumpex-bot -i max",
     "build": "bun build ./index.ts --outdir ./build --target=bun",
     "start": "bun ./build/index.js",
     "db:push": "bunx prisma db push",

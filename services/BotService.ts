@@ -62,7 +62,7 @@ export default class BotService extends EventEmitter {
       minTime: 40,
     });
 
-    this.bot = new TelegramBot(process.env.TELEGRAM_API_PROD_TOKEN as string, {
+    this.bot = new TelegramBot(process.env.TELEGRAM_API_TEST_TOKEN as string, {
       polling: true,
     });
 
@@ -308,7 +308,7 @@ export default class BotService extends EventEmitter {
   ) {
     const wrappedFunc = this.limiter.wrap(async () => {
       try {
-        await this.bot.sendMessage(chatId, message, options);
+        this.bot.sendMessage(chatId, message, options);
       } catch (error: any) {
         if (error.message === FORBIDDEN_ERROR) {
           console.log("----------- FORBIDDEN ERROR -----------");
@@ -331,6 +331,8 @@ export default class BotService extends EventEmitter {
             console.log("REMOVED CHAT: ", chatId);
           }
         }
+
+        console.log("chatId: ", chatId, "error: ", error.message);
       }
     });
 
