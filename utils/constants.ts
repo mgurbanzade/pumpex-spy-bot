@@ -4,7 +4,7 @@ import { Language } from "@prisma/client";
 // export const PAY_URL = "https://0ee0-84-10-81-63.ngrok-free.app/payments/pay";
 export const TRIAL_DAYS = 3;
 export const HELP_MESSAGE_SCHEDULE = "35 15 * * *";
-export const TRIAL_END_MESSAGE_SCHEDULE = "0 10,20 * * *";
+export const TRIAL_END_MESSAGE_SCHEDULE = "36 20 * * *";
 export const CHANNEL_URL = "https://t.me/pumpexapp";
 export const SUPPORT_CHAT_URL = "https://t.me/pumpexsupport";
 export type PlatformType = "Binance" | "Bybit" | "Coinbase";
@@ -17,13 +17,38 @@ export const DEFAULT_PAIRS = [
   "SOLUSDT",
   "XRPUSDT",
   "TONUSDT",
-  "DOGEUSDT",
   "ADAUSDT",
+  "AVAXUSDT",
+  "DOTUSDT",
+  "BCHUSDT",
+  "LINKUSDT",
+  "LTCUSDT",
+  "BONKUSDT",
+  "PEPEUSDT",
+  "SHIBUSDT",
+  "FLOKIUSDT",
+  "DOGEUSDT",
+  "1000BONKUSDT",
+  "1000PEPEUSDT",
+  "1000SHIBUSDT",
+  "1000FLOKIUSDT",
+  "1000DOGEUSDT",
+  "BTC-USD",
+  "ETH-USD",
+  "SOL-USD",
+  "XRP-USD",
   "DOGE-USD",
+  "ADA-USD",
+  "AVAX-USD",
+  "DOT-USD",
+  "BCH-USD",
+  "LINK-USD",
+  "LTC-USD",
   "BONK-USD",
+  "SHIB-USD",
 ];
 export const DEFAULT_LANGUAGE = Language.EN;
-export const DEFAULT_PERCENTAGE = 0.5;
+export const DEFAULT_PERCENTAGE = 0.3;
 export const DEFAULT_MULTIPLIER = 1.25;
 
 export const MIN_WINDOW_SIZE_MS = 30000;
@@ -47,15 +72,3 @@ export const DISABLED_PAIRS = [
   "RENDER/USD",
   "cbETH-USD",
 ];
-
-export const getBinanceFuturesURL = (lang: string, pair: string) => {
-  return `https://binance.com/${lang}/futures/${pair}`;
-};
-
-export const getBybitFuturesURL = (pair: string) => {
-  return `https://www.bybit.com/trade/usdt/${pair}`;
-};
-
-export const getCoinbaseURL = (pair: string) => {
-  return `https://pro.coinbase.com/trade/${pair}`;
-};

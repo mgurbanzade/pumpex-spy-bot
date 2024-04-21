@@ -1,6 +1,6 @@
 import Denque from "denque";
 import { DEFAULT_MULTIPLIER, DEFAULT_WINDOW_SIZE_MS } from "../utils/constants";
-import type { AdaptedMessage } from "../types";
+import type { AdaptedMessage, SignificantPumpInfo } from "../types";
 
 interface Trade {
   price: number;
@@ -21,21 +21,13 @@ interface PriceChangeInfo {
   lastPrice: number;
 }
 
-interface SignificantPumpInfo {
-  pair: string;
-  minPrice: number;
-  lastPrice: number;
-  diff: string;
-  volumeChange: number;
-}
-
 class MultiTradeQueue {
   private queues: Record<string, Queue> = {};
   private lastSignificantPump: Record<
     string,
     { priceChange: number; timestamp: number }
   > = {};
-  private readonly windowSize: number = DEFAULT_WINDOW_SIZE_MS; // 5 minutes
+  private readonly windowSize: number = DEFAULT_WINDOW_SIZE_MS; // 2.5 minutes
   private readonly percentage: number;
 
   constructor(percentage: number, windowSize: number) {

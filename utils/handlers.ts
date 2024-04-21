@@ -123,10 +123,6 @@ export const handleStart = async (message: Message, botService: BotService) => {
   const isValidTrial = isTrialValid(currentChat?.trialUntil);
 
   if (!isValidSubscription && !isValidTrial) {
-    botService.updateChatConfig(String(message.chat.id), {
-      state: ChatState.SUBSCRIBE,
-    });
-
     return sendSubscriptionOptions(message, botService, "send");
   }
 
@@ -141,8 +137,8 @@ export const handleStart = async (message: Message, botService: BotService) => {
   if (currentChat && currentChat?.selectedPairs?.length) {
     if (currentChat.state === ChatState.STOPPED) {
       botService.updateChatConfig(String(message.chat.id), {
+        state: ChatState.START,
         selectedPairs: currentChat.selectedPairs,
-        state: ChatState.SEARCHING,
       });
 
       botService.setPairsToSubscribe(currentChat.selectedPairs);
@@ -186,7 +182,6 @@ export const handleStopExchanges = (
 
   botService.updateChatConfig(String(message.chat.id), {
     stoppedExchanges: [...config.stoppedExchanges, data],
-    state: ChatState.SEARCHING,
   });
 
   botService.sendMessage(
@@ -230,15 +225,9 @@ export const handleCallbackQuery = (
       sendSelectPairs(message, botService);
       break;
     case "select-language":
-      botService.updateChatConfig(String(message.chat.id), {
-        state: ChatState.CHANGE_LANGUAGE,
-      });
       sendSelectLanguages(message, botService);
       break;
     case "stop-exchanges":
-      botService.updateChatConfig(String(message.chat.id), {
-        state: ChatState.UNSUBSCRIBE_EXCHANGES,
-      });
       sendExchangesOptions(message, botService);
       break;
     case "binance":
@@ -337,8 +326,8 @@ export const handleSelectPairsInput = (
   if (validSymbols.length) {
     if (!isValidSubscription && !isValidTrial) {
       botService.updateChatConfig(String(message.chat.id), {
-        state: ChatState.SUBSCRIBE,
         selectedPairs: validSymbols,
+        state: PrismaChatState.SEARCHING,
       });
 
       setTimeout(
@@ -353,7 +342,7 @@ export const handleSelectPairsInput = (
     }
     botService.updateChatConfig(String(message.chat.id), {
       selectedPairs: validSymbols,
-      state: ChatState.SEARCHING,
+      state: PrismaChatState.SEARCHING,
     });
 
     botService.setPairsToSubscribe(validSymbols);
@@ -377,7 +366,7 @@ export const handlePercentageInput = (
   ) {
     botService.updateChatConfig(String(message.chat.id), {
       percentage,
-      state: ChatState.SEARCHING,
+      state: PrismaChatState.SEARCHING,
     });
 
     botService.sendMessage(
@@ -389,6 +378,7 @@ export const handlePercentageInput = (
       { parse_mode: "Markdown" as ParseMode }
     );
 
+    botService.removePumpService(String(message.chat.id));
     return botService.setNewPumpService(String(message.chat.id));
   }
 
@@ -406,7 +396,6 @@ export const handleLanguageInput = (
 ) => {
   botService.updateChatConfig(String(message.chat.id), {
     language,
-    state: ChatState.SEARCHING,
   });
 
   const commands = [
@@ -454,7 +443,6 @@ const handleSetDefaultExchanges = (
   const config = botService.getChatConfig(String(message.chat.id));
   botService.updateChatConfig(String(message.chat.id), {
     stoppedExchanges: [],
-    state: ChatState.SEARCHING,
   });
 
   botService.bot.editMessageText(
@@ -486,7 +474,7 @@ export const handleSelectWindowSizeInput = (
   ) {
     botService.updateChatConfig(String(message.chat.id), {
       windowSize: windowSizeMs,
-      state: ChatState.SEARCHING,
+      state: PrismaChatState.SEARCHING,
     });
 
     botService.sendMessage(
@@ -494,6 +482,8 @@ export const handleSelectWindowSizeInput = (
       i18next.t("settings-saved", { lng: config?.language }),
       { parse_mode: "Markdown" as ParseMode }
     );
+
+    botService.removePumpService(String(message.chat.id));
 
     return botService.setNewPumpService(String(message.chat.id));
   }
