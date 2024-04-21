@@ -1,21 +1,11 @@
-import i18n from "../i18n";
 import type BotService from "./BotService";
 import MultiTradeQueue from "./MultiTradeQueue";
-import {
-  getBinanceFuturesURL,
-  getBybitFuturesURL,
-  getCoinbaseURL,
-  type PlatformType,
-} from "../utils/constants";
 import type { AdaptedMessage } from "../types";
-import type { Language } from "@prisma/client";
 
 type Config = {
-  language: Language;
   percentage: number;
   windowSize: number;
-  chatId: string;
-  selectedPairs: string[];
+  chatIds: Set<string>;
 };
 
 class PumpService {
@@ -32,59 +22,40 @@ class PumpService {
     );
   }
 
-  public getPriceInFloatingPoint = (price: number, platform: PlatformType) => {
-    const digitDispatcher = {
-      Binance: 6,
-      Bybit: 5,
-      Coinbase: 6,
-    };
-
-    const digit = digitDispatcher[platform];
-    return price <= 0.09 ? price.toFixed(digit) : price.toFixed(3);
-  };
 
   public handleMessage = async (message: AdaptedMessage) => {
     const { pair, platform } = message;
-    const selectedPairs = this.config.selectedPairs;
-    if (selectedPairs?.length && !selectedPairs?.includes(pair)) return;
 
     this.multiTradeQueue.addTrade(message);
     const checkResult = this.multiTradeQueue.checkAndLogSignificantPump(pair);
 
     if (checkResult !== null) {
-      const lng = this.config.language;
-      const { pair, minPrice, lastPrice, diff, volumeChange } = checkResult;
-
-      if (this.config.chatId === "437439778" || "843402430") {
-        console.log("Pump detected:", checkResult);
-      }
-
-      const currency = platform === "Coinbase" ? pair.split("-")[1] : "USDT";
-
-      const link =
-        platform === "Binance"
-          ? getBinanceFuturesURL(pair)
-          : platform === "Bybit"
-          ? getBybitFuturesURL(pair)
-          : getCoinbaseURL(pair);
-
-      const msg = i18n.t("pump-detected", {
+      this.botService.sendAlerts(
+        checkResult,
         platform,
-        currency,
-        pair: `[${pair}](${link})`,
-        link,
-        startPrice: this.getPriceInFloatingPoint(minPrice, platform),
-        lastPrice: this.getPriceInFloatingPoint(lastPrice, platform),
-        volumeChange: this.getPriceInFloatingPoint(volumeChange, platform),
-        diff,
-        lng,
-      });
-
-      this.botService.sendMessage(this.config.chatId, msg, {
-        parse_mode: "Markdown",
-        disable_web_page_preview: true,
-      });
+        Array.from(this.config.chatIds)
+      );
     }
+  };
+
+  public addChatId = (chatId: string) => {
+    this.config.chatIds.add(chatId);
+  };
+
+  public getChatIds = () => {
+    return this.config.chatIds;
+  };
+
+  public removeChatId = (chatId: string) => {
+    this.config.chatIds.delete(chatId);
+  };
+
+  public getPercentage = () => {
+    return this.config.percentage;
+  };
+
+  public getWindowSize = () => {
+    return this.config.windowSize;
   };
 }
 

@@ -17,13 +17,38 @@ export const DEFAULT_PAIRS = [
   "SOLUSDT",
   "XRPUSDT",
   "TONUSDT",
-  "DOGEUSDT",
   "ADAUSDT",
+  "AVAXUSDT",
+  "DOTUSDT",
+  "BCHUSDT",
+  "LINKUSDT",
+  "LTCUSDT",
+  "BONKUSDT",
+  "PEPEUSDT",
+  "SHIBUSDT",
+  "FLOKIUSDT",
+  "DOGEUSDT",
+  "1000BONKUSDT",
+  "1000PEPEUSDT",
+  "1000SHIBUSDT",
+  "1000FLOKIUSDT",
+  "1000DOGEUSDT",
+  "BTC-USD",
+  "ETH-USD",
+  "SOL-USD",
+  "XRP-USD",
   "DOGE-USD",
+  "ADA-USD",
+  "AVAX-USD",
+  "DOT-USD",
+  "BCH-USD",
+  "LINK-USD",
+  "LTC-USD",
   "BONK-USD",
+  "SHIB-USD",
 ];
 export const DEFAULT_LANGUAGE = Language.EN;
-export const DEFAULT_PERCENTAGE = 0.5;
+export const DEFAULT_PERCENTAGE = 0.3;
 export const DEFAULT_MULTIPLIER = 1.25;
 
 export const MIN_WINDOW_SIZE_MS = 30000;
@@ -47,15 +72,3 @@ export const DISABLED_PAIRS = [
   "RENDER/USD",
   "cbETH-USD",
 ];
-
-export const getBinanceFuturesURL = (pair: string) => {
-  return `https://binance.com/futures/${pair}`;
-};
-
-export const getBybitFuturesURL = (pair: string) => {
-  return `https://www.bybit.com/trade/usdt/${pair}`;
-};
-
-export const getCoinbaseURL = (pair: string) => {
-  return `https://pro.coinbase.com/trade/${pair}`;
-};

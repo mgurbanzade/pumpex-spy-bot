@@ -1,9 +1,13 @@
 import { DateTime } from "luxon";
 import EventEmitter from "events";
 import TelegramBot from "node-telegram-bot-api";
-import omit from "lodash.omit";
 import PumpService from "./PumpService";
-import type { ChatConfig, WalletWebhookMessage } from "../types";
+import i18n from "../i18n";
+import type {
+  ChatConfig,
+  SignificantPumpInfo,
+  WalletWebhookMessage,
+} from "../types";
 
 import type {
   Message,
@@ -37,7 +41,15 @@ import {
   isTrialValid,
 } from "../utils/payments";
 import Bottleneck from "bottleneck";
-import { isNegativeChatId } from "../utils/helpers";
+import {
+  getUniqueConfigs,
+  isNegativeChatId,
+  getBinanceFuturesURL,
+  getBybitFuturesURL,
+  getCoinbaseURL,
+  getPriceInFloatingPoint,
+} from "../utils/helpers";
+import { type PlatformType } from "../utils/constants";
 import { FORBIDDEN_ERROR, NOT_FOUND } from "../utils/errors";
 
 export default class BotService extends EventEmitter {
@@ -55,8 +67,8 @@ export default class BotService extends EventEmitter {
     this.pumpServices = {};
 
     this.limiter = new Bottleneck({
-      reservoir: 25,
-      reservoirRefreshAmount: 25,
+      reservoir: 29,
+      reservoirRefreshAmount: 29,
       reservoirRefreshInterval: 1000,
       maxConcurrent: 1,
       minTime: 40,
@@ -117,45 +129,33 @@ export default class BotService extends EventEmitter {
 
   public async initialize() {
     const chatConfigs = this.config.getAll();
+    const uniqConfig = getUniqueConfigs(chatConfigs);
 
-    for (let chatId in chatConfigs) {
-      const chatConfig = chatConfigs[chatId];
-      this.pumpServices[chatId] = new PumpService(
-        { ...chatConfig, chatId },
+    console.log(uniqConfig);
+
+    for (const configKey in uniqConfig) {
+      const [percentageStr, windowSizeStr] = configKey.split(":");
+      const percentage = parseFloat(percentageStr);
+      const windowSize = parseInt(windowSizeStr);
+
+      this.pumpServices[configKey] = new PumpService(
+        { percentage, windowSize, chatIds: new Set(uniqConfig[configKey]) },
         this
       );
     }
+
+    console.log("-------- BOT SERVICE INITIALIZED --------");
+    console.log(
+      "ACTIVE PUMP SERVICES: ",
+      Object.keys(this.pumpServices).length
+    );
+    console.log(Object.keys(this.pumpServices));
   }
 
   public handleMessage(message: AdaptedMessage) {
-    if (Object.keys(this.pumpServices).length > 0) {
-      for (let key in this.pumpServices) {
-        const chatConfig = this.getChatConfig(key);
-        if (!chatConfig) {
-          console.log("Chat config not found for chatId", key);
-          continue;
-        }
-
-        const isActiveSubscription = isSubscriptionValid(
-          chatConfig.paidUntil as string
-        );
-        const isActiveTrial = isTrialValid(chatConfig.trialUntil as string);
-        const isChatStopped = chatConfig?.state === ChatState.STOPPED;
-        const isExchangeStopped = chatConfig?.stoppedExchanges.includes(
-          message.platform.toLowerCase()
-        );
-
-        if (
-          isExchangeStopped ||
-          isChatStopped ||
-          (!isActiveSubscription && !isActiveTrial)
-        )
-          continue;
-
-        const pumpService = this.pumpServices[key];
-        pumpService.handleMessage(message);
-      }
-    }
+    Object.values(this.pumpServices).forEach((pumpService) => {
+      pumpService.handleMessage(message);
+    });
   }
 
   public async createChatConfig(config: Prisma.ChatConfigCreateInput) {
@@ -175,13 +175,55 @@ export default class BotService extends EventEmitter {
   }
 
   public setNewPumpService(chatId: string) {
-    const config = this.getChatConfig(chatId);
+    const { windowSize, percentage, paidUntil, trialUntil } =
+      this.getChatConfig(chatId);
 
-    this.pumpServices[chatId] = new PumpService({ chatId, ...config }, this);
+    const isValidSub = isSubscriptionValid(paidUntil);
+    const isValidTrial = isTrialValid(trialUntil);
+
+    if (!isValidSub && !isValidTrial) return;
+
+    const configKey = `${percentage}:${windowSize}`;
+
+    if (this.pumpServices[configKey]) {
+      const pumpService = this.pumpServices[configKey];
+      pumpService.addChatId(chatId);
+    } else {
+      this.pumpServices[configKey] = new PumpService(
+        { percentage, windowSize, chatIds: new Set([chatId]) },
+        this
+      );
+    }
+
+    console.log("------ ACTIVE PUMPSERVICES ------");
+
+    Object.values(this.pumpServices)
+      .filter((pumpService) => pumpService.getChatIds().size > 0)
+      .forEach((pumpService) => {
+        console.log(
+          `${pumpService.getPercentage()}:${pumpService.getWindowSize()}`
+        );
+        console.log(
+          `Chat Ids: ${Array.from(pumpService.getChatIds()).join(", ")}`
+        );
+      });
   }
-
+  // naming is not correct. This method removes the chatId from the PumpService
   public removePumpService(chatId: string) {
-    this.pumpServices = omit(this.pumpServices, chatId);
+    for (const key in this.pumpServices) {
+      const pumpService = this.pumpServices[key];
+
+      const chatIds = pumpService.getChatIds();
+
+      if (chatIds.has(chatId)) {
+        console.log("Removing chatId: ", chatId, "from pumpService: ", key);
+        pumpService.removeChatId(chatId);
+      }
+
+      if (pumpService.getChatIds().size === 0) {
+        delete this.pumpServices[key];
+      }
+    }
   }
 
   public setAvailableSymbols(symbols: string[]) {
@@ -242,7 +284,6 @@ export default class BotService extends EventEmitter {
       const chatId = invoice.order_id;
       this.updateChatConfig(chatId, {
         paidUntil: subscriptionExpiresAt.toISO(),
-        state: ChatState.SEARCHING,
       });
 
       sendPaymentSuccess(
@@ -252,27 +293,6 @@ export default class BotService extends EventEmitter {
       );
     }
   };
-
-  // public handleBinancePaySuccess = async (data: any) => {
-  //   const transactTime = DateTime.fromJSDate(new Date(data?.transactTime));
-  //   const subscriptionExpiresAt = transactTime.plus({ days: 30 });
-  //   const chatId = data?.merchantTradeNo?.split("date")[0];
-
-  //   const chatConfig = this.getChatConfig(Number(chatId));
-
-  //   if (isSubscriptionValid(chatConfig.paidUntil)) return;
-
-  //   this.updateChatConfig(Number(chatId), {
-  //     paidUntil: subscriptionExpiresAt.toISO(),
-  //     state: ChatState.SEARCHING,
-  //   });
-
-  //   sendPaymentSuccess(
-  //     Number(chatId),
-  //     this,
-  //     subscriptionExpiresAt.toFormat("dd.MM.yyyy")
-  //   );
-  // };
 
   public handleWalletPaySuccess = async (data: WalletWebhookMessage) => {
     const transactTime = DateTime.fromJSDate(
@@ -287,7 +307,6 @@ export default class BotService extends EventEmitter {
 
     this.updateChatConfig(chatId, {
       paidUntil: subscriptionExpiresAt.toISO(),
-      state: ChatState.SEARCHING,
     });
 
     sendPaymentSuccess(
@@ -307,37 +326,96 @@ export default class BotService extends EventEmitter {
     options?: SendMessageOptions
   ) {
     const wrappedFunc = this.limiter.wrap(async () => {
-      try {
-        await this.bot.sendMessage(chatId, message, options);
-      } catch (error: any) {
+      this.bot.sendMessage(chatId, message, options).catch((error: any) => {
         if (error.message === FORBIDDEN_ERROR) {
           console.log("----------- FORBIDDEN ERROR -----------");
-          console.log("Forbidden error. Removing chat config: ", chatId);
+          console.log("User blocked the bot. Stopping Pump Service: ", chatId);
           this.removePumpService(chatId);
-          await this.removeChatConfig(chatId);
-          console.log("REMOVED CHAT: ", chatId);
+          this.updateChatConfig(chatId, {
+            state: ChatState.STOPPED,
+          });
+          console.log("STOPPED PUMP SERVICE: ", chatId);
         }
 
         if (error.message === NOT_FOUND) {
-          const chatConfig = this.getChatConfig(chatId);
           console.log("----------- NOT FOUND ERROR -----------");
           console.log("Chat not found. Stopping Pump Service: ", chatId);
           this.removePumpService(chatId);
+          this.updateChatConfig(chatId, {
+            state: ChatState.STOPPED,
+          });
           console.log("STOPPED PUMP SERVICE: ", chatId);
-
-          if (!isSubscriptionValid(chatConfig.paidUntil)) {
-            console.log("NO VALID SUBSCRIPTION. REMOVING CHAT: ", chatId);
-            await this.removeChatConfig(chatId);
-            console.log("REMOVED CHAT: ", chatId);
-          }
         }
-      }
+      });
     });
 
-    try {
-      await wrappedFunc();
-    } catch (e) {
-      console.log("chatId: ", chatId, e);
-    }
+    wrappedFunc();
+  }
+
+  public async sendAlerts(
+    checkResult: SignificantPumpInfo,
+    platform: PlatformType,
+    chatIds: string[]
+  ) {
+    const { pair, minPrice, lastPrice, diff, volumeChange } = checkResult;
+    const currency = platform === "Coinbase" ? pair.split("-")[1] : "USDT";
+
+    const link =
+      platform === "Binance"
+        ? getBinanceFuturesURL(pair)
+        : platform === "Bybit"
+        ? getBybitFuturesURL(pair)
+        : getCoinbaseURL(pair);
+
+    const alertFns = chatIds.map(async (chatId) => {
+      const {
+        language,
+        selectedPairs,
+        trialUntil,
+        paidUntil,
+        state,
+        stoppedExchanges,
+      } = this.getChatConfig(chatId);
+      const isValidSubscription = isSubscriptionValid(paidUntil);
+      const isValidTrial = isTrialValid(trialUntil);
+      const isChatStopped = state === ChatState.STOPPED;
+      const isExchangeStopped = stoppedExchanges.includes(
+        platform.toLowerCase()
+      );
+
+      if (
+        (!isValidSubscription && !isValidTrial) ||
+        isChatStopped ||
+        isExchangeStopped
+      )
+        return;
+
+      if (selectedPairs?.length && !selectedPairs?.includes(pair)) return;
+
+      const msg = i18n.t("pump-detected", {
+        platform,
+        currency,
+        pair: `[${pair}](${link})`,
+        link,
+        startPrice: getPriceInFloatingPoint(minPrice, platform),
+        lastPrice: getPriceInFloatingPoint(lastPrice, platform),
+        volumeChange: getPriceInFloatingPoint(volumeChange, platform),
+        diff,
+        lng: language,
+      });
+
+      this.sendMessage(chatId, msg, {
+        parse_mode: "Markdown",
+        disable_web_page_preview: true,
+      });
+    });
+
+    Promise.all(alertFns).catch((e) => {
+      console.log("Error sending alerts: ", e);
+    });
+  }
+
+  public getPumpServices() {
+    return this.pumpServices;
   }
 }
