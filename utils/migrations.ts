@@ -11,6 +11,9 @@ async function updateUsers() {
   const chats = await prisma.chatConfig.findMany({
     where: {
       state: ChatState.STOPPED,
+      // trialUntil: {
+      //   lt: DateTime.now().toJSDate(),
+      // },
     },
   });
 

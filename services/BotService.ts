@@ -235,6 +235,11 @@ export default class BotService extends EventEmitter {
   }
 
   public setPairsToSubscribe(pairs: string[]) {
+    const pairsToSubscribe = new Set([...this.pairsToSubscribe]);
+    const allPairsExist = pairs.every((pair) => pairsToSubscribe.has(pair));
+
+    if (allPairsExist) return;
+
     const uniquePairs = new Set([...this.pairsToSubscribe, ...pairs]);
 
     this.pairsToSubscribe = Array.from(uniquePairs);
@@ -259,6 +264,8 @@ export default class BotService extends EventEmitter {
     const subscriptionsToRemove = Array.from(uselessSubscriptions).filter(
       (pair) => !allOtherPairs.has(pair)
     );
+
+    if (!subscriptionsToRemove.length) return;
 
     const updatedSubscriptions = this.pairsToSubscribe.filter(
       (pair) => !subscriptionsToRemove.includes(pair)
