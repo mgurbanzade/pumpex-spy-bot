@@ -14,7 +14,7 @@ async function updateUsers() {
     },
   });
 
-  console.log(chats);
+  console.log(chats.length);
 
   // const updateUserPromises = chats.map((chat: ChatConfig) =>
   //   prisma.chatConfig.update({
@@ -26,7 +26,7 @@ async function updateUsers() {
   //     },
   //   })
   // );
-  // await Promise.all(updateUserPromises);
+  // await Promise.all(chats);
   console.log("All users updated");
 }
 

@@ -12,16 +12,18 @@ import {
   adaptCoinbaseMessage,
 } from "./utils/adapters";
 import CoinbaseAPIService from "./services/CoinbaseAPIService";
-import type {
-  BinanceAggTradeMessage,
-  BybitTradeMessage,
-  ChatConfig,
-  CoinbaseTradeData,
-  WalletWebhookMessage,
+import {
+  ChatState,
+  type BinanceAggTradeMessage,
+  type BybitTradeMessage,
+  type ChatConfig,
+  type CoinbaseTradeData,
+  type WalletWebhookMessage,
 } from "./types";
 // import { validatePayment } from "./utils/payments";
 import { verifyWalletSignature } from "./utils/wallet-pay";
 import ScheduleService from "./services/ScheduleService";
+import { isSubscriptionValid, isTrialValid } from "./utils/payments";
 
 const messageQueue = new Queue("messageProcessing", {
   redis: {
@@ -141,6 +143,14 @@ bot.on(EVENTS.SUBSCRIPTIONS_UPDATED, (symbols: string[]) => {
 
 configService.on(EVENTS.CONFIG_LOADED, (config: ChatConfig[]) => {
   const pairs = config
+    ?.filter((item: ChatConfig) => {
+      const isValidTrial = isTrialValid(item.trialUntil);
+      const isValidSubscription = isSubscriptionValid(item.paidUntil);
+      return (
+        (isValidTrial || isValidSubscription) &&
+        item.state !== ChatState.STOPPED
+      );
+    })
     ?.map((item: ChatConfig) => item.selectedPairs)
     .flat() as string[];
 

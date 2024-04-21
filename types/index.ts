@@ -16,6 +16,14 @@ export type ChatConfig = {
   trialUntil: Date | string | null;
 };
 
+export interface SignificantPumpInfo {
+  pair: string;
+  minPrice: number;
+  lastPrice: number;
+  diff: string;
+  volumeChange: number;
+}
+
 export enum Language {
   EN = "EN",
   RU = "RU",
@@ -28,12 +36,8 @@ export enum ChatState {
   SELECT_PAIRS = "SELECT_PAIRS",
   SELECT_PERCENTAGE = "SELECT_PERCENTAGE",
   SELECT_WINDOW_SIZE = "SELECT_WINDOW_SIZE",
-  CHANGE_LANGUAGE = "CHANGE_LANGUAGE",
-  UNSUBSCRIBE_EXCHANGES = "UNSUBSCRIBE_EXCHANGES",
-  SUBSCRIBE = "SUBSCRIBE",
   SEARCHING = "SEARCHING",
   STOPPED = "STOPPED",
-  SUPPORT = "SUPPORT",
 }
 
 export type AdaptedMessage = {
