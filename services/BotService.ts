@@ -336,22 +336,25 @@ export default class BotService extends EventEmitter {
       this.bot.sendMessage(chatId, message, options).catch((error: any) => {
         if (error.message === FORBIDDEN_ERROR) {
           console.log("----------- FORBIDDEN ERROR -----------");
-          console.log("User blocked the bot. Stopping Pump Service: ", chatId);
+          console.log(
+            "User blocked the bot. Removing from Pump Service: ",
+            chatId
+          );
           this.removePumpService(chatId);
           this.updateChatConfig(chatId, {
             state: ChatState.STOPPED,
           });
-          console.log("STOPPED PUMP SERVICE: ", chatId);
+          console.log("REMOVED FROM PUMP SERVICE: ", chatId);
         }
 
         if (error.message === NOT_FOUND) {
           console.log("----------- NOT FOUND ERROR -----------");
-          console.log("Chat not found. Stopping Pump Service: ", chatId);
+          console.log("Chat not found. Removing from Pump Service: ", chatId);
           this.removePumpService(chatId);
           this.updateChatConfig(chatId, {
             state: ChatState.STOPPED,
           });
-          console.log("STOPPED PUMP SERVICE: ", chatId);
+          console.log("REMOVED FROM PUMP SERVICE: ", chatId);
         }
       });
     });
