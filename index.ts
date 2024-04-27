@@ -24,6 +24,7 @@ import {
 import { verifyWalletSignature } from "./utils/wallet-pay";
 import ScheduleService from "./services/ScheduleService";
 import { isSubscriptionValid, isTrialValid } from "./utils/payments";
+import OpenInterestService from "./services/OpenInterest";
 
 const messageQueue = new Queue("messageProcessing", {
   redis: {
@@ -69,7 +70,8 @@ const bybit = new BybitAPIService();
 const binance = new BinanceAPIService();
 const coinbase = new CoinbaseAPIService();
 const configService = new ConfigService();
-const bot = new BotService(configService);
+const oiService = new OpenInterestService();
+const bot = new BotService(configService, oiService);
 const scheduleService = new ScheduleService(bot);
 
 const binanceSymbolsPromise = new Promise((resolve) => {
@@ -137,7 +139,11 @@ bot.on(EVENTS.SUBSCRIPTIONS_UPDATED, (symbols: string[]) => {
   );
 
   bybit.subscribeToStreams(bybitSymbols);
+  oiService.startPolling(bybitSymbols, "Bybit");
+
   binance.subscribeToStreams(binanceSymbols);
+  oiService.startPolling(binanceSymbols, "Binance");
+
   coinbase.subscribeToStreams(coinbaseSymbols);
 });
 

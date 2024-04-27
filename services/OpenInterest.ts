@@ -1,113 +1,180 @@
-import WebSocket from "ws";
-import { DateTime } from "luxon";
-import crypto from "crypto";
-import axios from "axios";
+import Binance from "node-binance-api";
+import { RestClientV5 } from "bybit-api";
+import { OPEN_INTEREST_INTERVAL, type PlatformType } from "../utils/constants";
 
-const getCoinGlassUrl = (symbol: string) =>
-  `https://www.coinglass.com/tv/Binance_${symbol}`;
-const PUMP_INTERVAL = 1000 * 5; // 5 min
-// const OPEN_INTEREST_INTERVAL = 60000 * 5; // 5 min
+interface OpenInterestResult {
+  symbol: string;
+  openInterest: number;
+}
 
+type OpenInterestType = {
+  current: OpenInterestResult;
+  previous: OpenInterestResult | null;
+  diff: number | null;
+  diffPercent: number | null;
+};
+
+type OpenInterestData = {
+  [K in PlatformType]: {
+    [key: string]: OpenInterestType;
+  };
+};
 class OpenInterestService {
-  private intervalId: any = null;
-  private baseUrl: string = "https://api.binance.com";
-  private symbols: string[] = [];
-  private data: any = {};
-  private prevData: any = {};
-
-  // private prevOpenInterest: any = {};
-  // private openInterest: any = {};
-  // private emptyOpenInterest: string[] = [];
+  private data: OpenInterestData = {
+    Binance: {},
+    Bybit: {},
+    Coinbase: {},
+  };
+  private symbols: {
+    Binance: string[];
+    Bybit: string[];
+    Coinbase: string[];
+  };
+  private binance: Binance;
+  private bybit: RestClientV5;
+  private updateInterval: NodeJS.Timer | null = null;
 
   constructor() {
-    this.initialize();
+    this.symbols = {
+      Binance: [],
+      Bybit: [],
+      Coinbase: [],
+    };
+    this.binance = new Binance().options({
+      APIKEY:
+        "YSh6moYvbRInOjDi0goCD7wME5PVPUFzahqHrNjTTgXKdlzA8FpMRE6zoLeQ94FN",
+      APISECRET:
+        "AOa0kSbs3JZeJJjizeskzZkxb2UTuCntGqagFClLo3sYS7RINuzwCmN8NTHiIdvS",
+      useServerTime: true,
+    });
+
+    this.bybit = new RestClientV5();
   }
 
-  private async initialize(): Promise<void> {
-    await this.fetchSymbols();
-    // setInterval(() => {
-    //   this.pollOpenInterest();
-    // }, OPEN_INTEREST_INTERVAL);
+  public startPolling(symbols: string[], platform: PlatformType): void {
+    this.symbols[platform] = symbols;
+    this.stopPolling();
+    this.fetchOpenInterestForAllSymbols();
+    this.updateInterval = setInterval(() => {
+      this.fetchOpenInterestForAllSymbols();
+    }, OPEN_INTEREST_INTERVAL) as any;
   }
 
-  private async fetchSymbols() {
-    try {
-      // const response = await fetch(`${this.baseUrl}/api/v3/exchangeInfo`);
-      // const data = await response.json();
-      // if (data?.symbols) {
-      //   this.symbols = data.symbols
-      //     .filter(
-      //       (item) => item.symbol.includes("USDT") && item.status === "TRADING"
-      //     )
-      //     .map((item: any) => item.symbol);
-      // }
-    } catch (error) {
-      console.error("Error fetching altcoin symbols:", error);
-      return [];
+  public stopPolling(): void {
+    if (this.updateInterval) {
+      clearInterval(this.updateInterval);
+      this.updateInterval = null;
     }
   }
 
-  // private fetchOpenInterest = async (symbol) => {
-  //   try {
-  //     const response = await axios.get(
-  //       `https://fapi.binance.com/futures/data/openInterestHist?symbol=${symbol}&period=5m&limit=1`
-  //     );
+  private async fetchOpenInterestForAllSymbols(): Promise<void> {
+    const binancePromises = this.symbols["Binance"].map((symbol) =>
+      this.fetchBinanceOI(symbol)
+    );
 
-  //     if (!response.data || !response.data.length) {
-  //       this.emptyOpenInterest.push(symbol);
-  //     }
-  //     return response.data[0];
-  //   } catch (error) {
-  //     console.error(`Error fetching open interest for ${symbol}:`, error);
-  //     return null;
-  //   }
-  // };
+    const bybitPromises = this.symbols["Bybit"].map((symbol) =>
+      this.fetchBybitOI(symbol)
+    );
 
-  // private fetchOpenInterestForAllSymbols = async () => {
-  //   const openInterestPromises = this.symbols
-  //     .filter((sym) => this.emptyOpenInterest.indexOf(sym) === -1)
-  //     .map(this.fetchOpenInterest);
-  //   const openInterestResults = await Promise.all(openInterestPromises);
+    const binanceResults = await Promise.all(binancePromises);
+    const bybitResults = await Promise.all(bybitPromises);
 
-  //   return openInterestResults.filter((result) => result !== null);
-  // };
+    const filteredBinance = binanceResults.filter((res) => res !== null);
+    const filteredBybit = bybitResults.filter((res) => res !== null);
 
-  // private pollOpenInterest = async (period: string = "5m") => {
-  //   const markets = await this.fetchOpenInterestForAllSymbols();
-  //   markets
-  //     .filter((item) => item?.sumOpenInterestValue)
-  //     .forEach((market) => {
-  //       const { symbol, sumOpenInterest, sumOpenInterestValue, timestamp } =
-  //         market;
-  //       this.prevOpenInterest[symbol] = { ...this.openInterest[symbol] };
-  //       const prevData = this.prevOpenInterest[symbol];
-  //       const presentedSum =
-  //         new Intl.NumberFormat("en-US", {
-  //           maximumFractionDigits: 0,
-  //           minimumFractionDigits: 0,
-  //         })
-  //           .format(sumOpenInterestValue)
-  //           .replace(/,/g, " ") + " USDT";
+    [...filteredBinance].forEach((res) => this.handleResult(res, "Binance"));
+    [...filteredBybit].forEach((res) => this.handleResult(res, "Bybit"));
+  }
 
-  //       const diffPercent = prevData.sum
-  //         ? (
-  //             ((sumOpenInterestValue - prevData.sum) / prevData.sum) *
-  //             100
-  //           ).toFixed(3)
-  //         : null;
+  private calculateDiffPercent(symbol: string, platform: PlatformType): void {
+    const symbolData = this.data[platform][symbol];
 
-  //       const sym = symbol.replace("USDT", "");
+    if (symbolData.previous) {
+      const currentInterest = symbolData.current.openInterest;
+      const previousInterest = symbolData.previous.openInterest;
+      const difference = currentInterest - previousInterest;
+      const diffPercent = (difference / previousInterest) * 100;
+      symbolData.diff = difference;
+      symbolData.diffPercent = parseFloat(diffPercent.toFixed(3));
+    } else {
+      symbolData.diffPercent = null;
+    }
 
-  //       this.openInterest[symbol] = {
-  //         sum: sumOpenInterestValue,
-  //         volume: `${parseFloat(sumOpenInterest).toFixed(3)} ${sym}`,
-  //         diffPercent: diffPercent ? `${diffPercent}%` : null,
-  //         presentedSum,
-  //         timestamp: DateTime.fromMillis(timestamp).toFormat("HH:mm:ss"),
-  //       };
-  //     });
+    this.data[platform][symbol] = symbolData;
+  }
 
-  // };
+  private handleResult(
+    result: OpenInterestResult | null,
+    platform: PlatformType
+  ): void {
+    if (result) {
+      const { symbol } = result;
+
+      if (this.data[platform][symbol]) {
+        this.data[platform][symbol].previous =
+          this.data[platform][symbol].current;
+        this.data[platform][symbol].current = result;
+
+        this.calculateDiffPercent(symbol, platform);
+      } else {
+        this.data[platform][symbol] = {
+          current: result,
+          previous: null,
+          diff: null,
+          diffPercent: null,
+        };
+      }
+    }
+  }
+
+  private async fetchBinanceOI(
+    symbol: string
+  ): Promise<OpenInterestResult | null> {
+    try {
+      const openInterest = await this.binance.futuresOpenInterest(symbol);
+      if (!openInterest) return null;
+
+      return {
+        symbol,
+        openInterest: parseFloat(openInterest),
+      };
+    } catch (error) {
+      console.error("Error fetching open interest for", symbol, ":", error);
+      return null;
+    }
+  }
+
+  async fetchBybitOI(symbol: string): Promise<OpenInterestResult | null> {
+    try {
+      const response = await this.bybit.getOpenInterest({
+        symbol,
+        category: "linear",
+        intervalTime: "5min",
+      });
+
+      const result = response.result?.list?.[0];
+      if (!result) return null;
+
+      return {
+        symbol,
+        openInterest: Number(result.openInterest),
+      };
+    } catch (error) {
+      console.error("Bybit Error:", error);
+      return null;
+    }
+  }
+
+  public getData(): OpenInterestData {
+    return this.data;
+  }
+
+  public getOIForSymbol(
+    symbol: string,
+    platform: PlatformType
+  ): OpenInterestType | null {
+    return this.data[platform][symbol] || null;
+  }
 }
 
 export default OpenInterestService;

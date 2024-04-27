@@ -9,6 +9,7 @@ export const CHANNEL_URL = "https://t.me/pumpexapp";
 export const SUPPORT_CHAT_URL = "https://t.me/pumpexsupport";
 export type PlatformType = "Binance" | "Bybit" | "Coinbase";
 
+export const OPEN_INTEREST_INTERVAL = 60000 * 6; // 6 minutes
 export const DEFAULT_SUBSCRIPTION_PRICE = 29;
 export const DEFAULT_PAIRS = [
   "BTCUSDT",

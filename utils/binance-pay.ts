@@ -28,7 +28,7 @@ export async function retrievePaymentURL({ chatId }: { chatId: string }) {
   const nonce = CryptoJS.lib.WordArray.random(128 / 8).toString(
     CryptoJS.enc.Hex
   );
-  const secretKey = process.env.BINANCE_SECRET_KEY as string;
+  const secretKey = process.env.BINANCE_PAY_SECRET_KEY as string;
 
   const body = {
     env: {
@@ -58,7 +58,7 @@ export async function retrievePaymentURL({ chatId }: { chatId: string }) {
     "content-type": "application/json",
     "BinancePay-Timestamp": timestamp.toString(),
     "BinancePay-Nonce": nonce,
-    "BinancePay-Certificate-SN": process.env.BINANCE_API_KEY, // Ваш API ключ
+    "BinancePay-Certificate-SN": process.env.BINANCE_PAY_API_KEY, // Ваш API ключ
     "BinancePay-Signature": signature,
   };
 
