@@ -20,7 +20,8 @@
   "already-started": "Scanning for pumps... Current percentage: *{{percentage}}%*",
   "started": "✅ Started! Scanning for pumps...",
   "all-except": "All pairs expect:",
-  "pump-detected": "🪙 {{pair}}\n\n\nPump detected on *{{platform}}*!\n\n\n🔴 Previous price: {{startPrice}} {{currency}}\n\n🟢 Current price: {{lastPrice}} {{currency}}\n\n💹 Diff: +{{diff}}%\n\n📶 Volume: +{{volumeChange}}%",
+  "pump-detected": "🪙 {{pair}}  🏦 *{{platform}}*\n\n\n🟢 *Pump: +{{diff}}%*\n\n💹 Price: {{minPrice}} – {{lastPrice}} {{currency}}\n\n📶 Trade volume: +{{volumeChange}}%\n\n\n⏰ Time interval: {{windowSize}} min.",
+  "pump-detected-oi": "🪙 {{pair}}  🏦 *{{platform}}*\n\n\n🟢 *Pump: +{{diff}}%*\n\n💹 Price: {{minPrice}} – {{lastPrice}} {{currency}}\n\n📶 Trade volume: +{{volumeChange}}%\n\n💸 Open Interest ({{ interval }}): {{oiDiff}}%\n\n\n⏰ Time interval: {{windowSize}} min.",
   "invalid-pairs": "❌ *These pairs are not valid or available:*\n\n{{invalidPairs}}",
   "invalid-percentage": "❌ Invalid percentage",
   "stop-exchanges": "🏦 Exchanges",
@@ -49,10 +50,11 @@
   "things-to-know": "🚨 Important to Know",
   "how-to-use": "💡 How to Use",
   "in-development": "🚧 In Development",
-  "terms-desc": "📚 *Trading pair* – assets that can be bought and sold together. Example: BTCUSDT\n\n📚 *Pump* – A rise in an asset's price compared to its lowest price within a certain period.\n\n📚 *Interval* – The time frame used to check the lowest price of an asset to identify a price increase.\n\n📚 *Trading volume* – The total amount of trading activity measured in money.",
+  "terms-desc": "📚 *Trading pair* – assets that can be bought and sold together. Example: BTCUSDT\n\n📚 *Pump* – A rise in an asset's price compared to its lowest price within a certain period.\n\n📚 *Interval* – The time frame used to update the minimal price of an asset to identify a price increase.\n\n📚 *Trading volume* – The total amount of trading activity measured in money.",
   "to-know-desc": "🚨 *Notifications from Pumpex Spy are not financial advice to buy or sell.*\n\nOur goal is to keep you informed of events, freeing you from the need to sit in front of monitors for hours.\n\nThanks to the bot, you can track price changes of hundreds of pairs simultaneously and receive notifications about pumps at the earliest stages of movement.\n\n🚨 *Pumpex Spy is not responsible for the decisions you make based on notifications.*\n\n🚨 Pumpex Spy is entirely dependent on data obtained from cryptocurrency exchanges. Failures in the operation of exchanges or Telegram will affect the bot's performance.\n\n🚨 At the moment, Pumpex Spy does not support refunds. It also does not automatically charge you at the end of the subscription period.\n\n💡 [Subscribe to the channel](https://t.me/pumpexapp) for future updates.",
   "how-to-desc": "💡 *Choosing a trading pair, percentage, and time interval directly affects the frequency of notifications received.*\n\nIf you set a filter to track a 5% increase for BTCUSDT, you will hardly receive any notifications.\n\n'Bitcoin' rarely shows 5% pumps in a day, not to mention 15 minutes — which is the maximum duration of the time interval.\n\nFor higher percentages, choose more volatile pairs and a longer time interval.\n\n💡 *For quick reaction to price changes, choose a lower percentage.*\n\nThe lower the percentage - the more notifications, the higher the chance to catch a pump at an early stage. But also the higher the chance to catch “false” pumps. After all, in a volatile market, any asset can rise by 0.1% many times a day.\n\n💡 *Choosing the percentage and time interval is a compromise* between the desire to notice the price increase as early as possible and the hope to catch a really significant rise.\n\nConsider these nuances when setting filters.\n\n*Don't forget to pay attention to the increase in trading volume for a big picture.*\n\n[Contact support](https://t.me/pumpexsupport) for any questions.",
   "in-dev-desc": "🚧 The ability to customize the percentage and interval for each pair.\n\n🚧 Integration of additional exchanges.\n\n🚧 Increasing the time interval.\n\n🚧 Additional payment methods.\n\n💡 *We are also open to your suggestions.*\n\n[Contact support](https://t.me/pumpexsupport) for any questions.",
   "subscribe-to-channel": "📢 Subscribe to the channel",
-  "trial-ended": "⏰ Your free trial has ended.\n\n💳 Please subscribe to continue receiving notifications"
+  "trial-ended": "⏰ Your free trial has ended.\n\n💳 Please subscribe to continue receiving notifications",
+  "minutes-short": "min"
 }

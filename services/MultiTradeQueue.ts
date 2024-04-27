@@ -79,8 +79,9 @@ class MultiTradeQueue {
 
       if (removedTrade && removedTrade.price === this.queues[pair].minPrice) {
         if (queue.length > 0) {
-          const prices = queue.toArray().map((trade) => trade.price);
-          this.queues[pair].minPrice = Math.min(...prices);
+          this.queues[pair].minPrice = queue
+            .toArray()
+            .reduce((min, trade) => Math.min(min, trade.price), Infinity);
         } else {
           this.queues[pair].minPrice = newTradePrice;
         }

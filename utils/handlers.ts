@@ -433,7 +433,6 @@ export const handleLanguageInput = (
       message_id: message.message_id,
     }
   );
-  botService.setNewPumpService(String(message.chat.id));
 };
 
 const handleSetDefaultExchanges = (

@@ -24,9 +24,8 @@ import {
   handleHelp,
 } from "../utils/handlers";
 
-import { EVENTS } from "../utils/constants";
+import { EVENTS, OPEN_INTEREST_INTERVAL } from "../utils/constants";
 import {
-  sendHelpMessage,
   sendKnowledgeBase,
   sendNegativeIdMessage,
   sendPaymentSuccess,
@@ -51,18 +50,21 @@ import {
 } from "../utils/helpers";
 import { type PlatformType } from "../utils/constants";
 import { FORBIDDEN_ERROR, NOT_FOUND } from "../utils/errors";
+import type OpenInterestService from "./OpenInterest";
 
 export default class BotService extends EventEmitter {
   private limiter: Bottleneck;
   public config: ConfigService;
   public bot: TelegramBot;
+  public oiService: OpenInterestService;
   private pumpServices: { [key: string]: PumpService };
   private availableSymbols: string[];
   private pairsToSubscribe: string[] = [];
 
-  constructor(config: ConfigService) {
+  constructor(config: ConfigService, oiService: OpenInterestService) {
     super();
     this.config = config;
+    this.oiService = oiService;
     this.availableSymbols = [];
     this.pumpServices = {};
 
@@ -368,6 +370,11 @@ export default class BotService extends EventEmitter {
     chatIds: string[]
   ) {
     const { pair, minPrice, lastPrice, diff, volumeChange } = checkResult;
+    const openInterest =
+      platform !== "Coinbase"
+        ? this.oiService.getOIForSymbol(pair, platform)
+        : null;
+
     const currency = platform === "Coinbase" ? pair.split("-")[1] : "USDT";
 
     const link =
@@ -385,6 +392,7 @@ export default class BotService extends EventEmitter {
         paidUntil,
         state,
         stoppedExchanges,
+        windowSize,
       } = this.getChatConfig(chatId);
       const isValidSubscription = isSubscriptionValid(paidUntil);
       const isValidTrial = isTrialValid(trialUntil);
@@ -401,17 +409,27 @@ export default class BotService extends EventEmitter {
         return;
 
       if (selectedPairs?.length && !selectedPairs?.includes(pair)) return;
+      const oiDiff = openInterest?.diffPercent || 0;
+      const minuteShort = i18n.t("minutes-short", { lng: language });
 
-      const msg = i18n.t("pump-detected", {
+      const msg = i18n.t(oiDiff !== 0 ? "pump-detected-oi" : "pump-detected", {
         platform,
         currency,
         pair: `[${pair}](${link})`,
         link,
-        startPrice: getPriceInFloatingPoint(minPrice, platform),
+        minPrice: getPriceInFloatingPoint(minPrice, platform),
         lastPrice: getPriceInFloatingPoint(lastPrice, platform),
         volumeChange: getPriceInFloatingPoint(volumeChange, platform),
+        windowSize: windowSize / 60000,
         diff,
         lng: language,
+        interval: `${OPEN_INTEREST_INTERVAL / 60000} ${minuteShort}`,
+        oiDiff:
+          oiDiff > 0
+            ? `+${oiDiff.toFixed(3)}`
+            : oiDiff < 0
+            ? oiDiff.toFixed(3)
+            : 0,
       });
 
       this.sendMessage(chatId, msg, {
@@ -428,4 +446,22 @@ export default class BotService extends EventEmitter {
   public getPumpServices() {
     return this.pumpServices;
   }
+
+  // public async fetchSymbols() {
+  //   const url = "https://api.binance.com/api/v3/ticker/24hr";
+  //   try {
+  //     const response = await fetch(url);
+  //     const data = await response.json();
+  //     const sortedPairs = data?.sort(
+  //       (a, b) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume)
+  //     );
+  //     const top50Pairs = sortedPairs
+  //       .slice(50, 300)
+  //       .map((pair: any) => pair.symbol);
+
+  //     this.symbols = top50Pairs;
+  //   } catch (error) {
+  //     console.error("Error fetching data:", error);
+  //   }
+  // }
 }
