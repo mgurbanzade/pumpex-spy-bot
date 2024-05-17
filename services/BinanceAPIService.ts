@@ -3,15 +3,21 @@ import WebSocket from "ws";
 import { DateTime } from "luxon";
 import { EVENTS } from "../utils/constants";
 import { splitIntoGroups } from "../utils/helpers";
+import Binance from "node-binance-api";
 
 class BinanceAPIService extends EventEmitter {
   private symbols: string[] = [];
   private connections: WebSocket[] = [];
   private reconnectAttempts: number = 0;
   private maxReconnectAttempts: number = 5;
+  private client: Binance;
 
   constructor() {
     super();
+    this.client = new Binance().options({
+      APIKEY: process.env.BINANCE_API_KEY,
+      APISECRET: process.env.BINANCE_API_SECRET,
+    });
     this.initialize();
   }
 
@@ -26,16 +32,14 @@ class BinanceAPIService extends EventEmitter {
 
   private async fetchSymbols() {
     try {
-      const response = await fetch(
-        `https://api.binance.com/api/v3/exchangeInfo`
-      );
-      const data = (await response.json()) as Record<string, any>;
+      const res = await this.client.futuresExchangeInfo();
 
-      if (!data) console.log("no data");
-
-      if (data?.symbols) {
-        this.symbols = data.symbols
-          .filter((item: Record<string, any>) => item.status === "TRADING")
+      if (res?.symbols) {
+        this.symbols = res.symbols
+          .filter(
+            (item: Record<string, any>) =>
+              item.status === "TRADING" && item.contractType === "PERPETUAL"
+          )
           .map((item: any) => item.symbol);
 
         this.emit(EVENTS.SYMBOLS_FETCHED, this.symbols);
@@ -43,7 +47,7 @@ class BinanceAPIService extends EventEmitter {
         console.log("No symbols found on Binance");
       }
     } catch (error) {
-      console.error("Something went wrong. Try again later");
+      console.error("Something went wrong. Try again later", error);
       return [];
     }
   }
@@ -59,7 +63,10 @@ class BinanceAPIService extends EventEmitter {
 
     wSocket.on("open", () => {
       this.reconnectAttempts = 0;
-      console.log("Binance connections: ", this.connections.length);
+      console.log(
+        "Binance connections: ",
+        `${index + 1}/${this.connections.length}`
+      );
       console.log(
         `WebSocket connection established on Binance for group ${pairsGroup}`
       );

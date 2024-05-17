@@ -22,12 +22,14 @@ class PumpService {
     );
   }
 
-
   public handleMessage = async (message: AdaptedMessage) => {
     const { pair, platform } = message;
 
     this.multiTradeQueue.addTrade(message);
-    const checkResult = this.multiTradeQueue.checkAndLogSignificantPump(pair);
+    const checkResult = this.multiTradeQueue.checkAndLogSignificantPump(
+      pair,
+      platform
+    );
 
     if (checkResult !== null) {
       this.botService.sendAlerts(

@@ -51,20 +51,27 @@ import {
 import { type PlatformType } from "../utils/constants";
 import { FORBIDDEN_ERROR, NOT_FOUND } from "../utils/errors";
 import type OpenInterestService from "./OpenInterest";
+import type TopPairsService from "./TopPairsService";
 
 export default class BotService extends EventEmitter {
   private limiter: Bottleneck;
   public config: ConfigService;
   public bot: TelegramBot;
   public oiService: OpenInterestService;
+  public topPairsService: TopPairsService;
   private pumpServices: { [key: string]: PumpService };
   private availableSymbols: string[];
   private pairsToSubscribe: string[] = [];
 
-  constructor(config: ConfigService, oiService: OpenInterestService) {
+  constructor(
+    config: ConfigService,
+    oiService: OpenInterestService,
+    topPairsService: TopPairsService
+  ) {
     super();
     this.config = config;
     this.oiService = oiService;
+    this.topPairsService = topPairsService;
     this.availableSymbols = [];
     this.pumpServices = {};
 
@@ -76,7 +83,7 @@ export default class BotService extends EventEmitter {
       minTime: 40,
     });
 
-    this.bot = new TelegramBot(process.env.TELEGRAM_API_PROD_TOKEN as string, {
+    this.bot = new TelegramBot(process.env.TELEGRAM_API_TEST_TOKEN as string, {
       polling: true,
     });
 
@@ -152,6 +159,7 @@ export default class BotService extends EventEmitter {
       Object.keys(this.pumpServices).length
     );
     console.log(Object.keys(this.pumpServices));
+    // await this.fetchMarketCaps();
   }
 
   public handleMessage(message: AdaptedMessage) {
@@ -447,21 +455,57 @@ export default class BotService extends EventEmitter {
     return this.pumpServices;
   }
 
-  // public async fetchSymbols() {
-  //   const url = "https://api.binance.com/api/v3/ticker/24hr";
-  //   try {
-  //     const response = await fetch(url);
-  //     const data = await response.json();
-  //     const sortedPairs = data?.sort(
-  //       (a, b) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume)
-  //     );
-  //     const top50Pairs = sortedPairs
-  //       .slice(50, 300)
-  //       .map((pair: any) => pair.symbol);
+  public async getTopPairs([start, final]: number[]) {
+    try {
+      const binanceFutures = await this.topPairsService.getBinanceFutures();
+      const bybitFutures = await this.topPairsService.getBybitFutures();
 
-  //     this.symbols = top50Pairs;
-  //   } catch (error) {
-  //     console.error("Error fetching data:", error);
-  //   }
-  // }
+      const maxLength = Math.max(
+        binanceFutures?.length as number,
+        bybitFutures?.length as number
+      );
+      const end = final === Infinity ? maxLength : final;
+      const size = end - start;
+
+      const [binance, bybit] = await Promise.all([
+        binanceFutures,
+        bybitFutures,
+      ]);
+
+      let i = start || 0;
+      let j = start || 0;
+      const binancePairs = [];
+      const bybitPairs = [];
+      const addedBinanceAssets = new Set<string>();
+      const addedBybitAssets = new Set<string>();
+
+      while (true) {
+        const pair = binance?.[i];
+        if (!pair) break;
+
+        addedBinanceAssets.add(pair.baseAsset);
+        binancePairs.push(pair.pair);
+        i++;
+
+        if (addedBinanceAssets.size === size) break;
+      }
+
+      while (true) {
+        const pair = bybit?.[j];
+        if (!pair) break;
+
+        addedBybitAssets.add(pair.baseAsset);
+        bybitPairs.push(pair.pair);
+        j++;
+        if (addedBybitAssets.size === size) break;
+      }
+
+      // console.log(binancePairs);
+
+      return Array.from(new Set([...binancePairs, ...bybitPairs]));
+    } catch (e) {
+      console.log("Error fetching top pairs", e);
+      return [];
+    }
+  }
 }

@@ -71,6 +71,40 @@ export const sendSelectPairs = (
             inline_keyboard: [
               [
                 {
+                  text: "TOP 50",
+                  callback_data: "0-50",
+                },
+                {
+                  text: "TOP 100",
+                  callback_data: "0-100",
+                },
+                {
+                  text: "TOP 200",
+                  callback_data: "0-200",
+                },
+              ],
+              [
+                {
+                  text: "50+",
+                  callback_data: "50-END",
+                },
+                {
+                  text: "100+",
+                  callback_data: "100-END",
+                },
+                {
+                  text: "200+",
+                  callback_data: "200-END",
+                },
+              ],
+              [
+                {
+                  text: "ALL",
+                  callback_data: "ALL-PAIRS",
+                },
+              ],
+              [
+                {
                   text: i18next.t("back", {
                     lng: chatConfig?.language,
                   }),

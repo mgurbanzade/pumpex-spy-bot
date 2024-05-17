@@ -1,6 +1,7 @@
 import EventEmitter from "events";
 import WebSocket from "ws";
 import { DateTime } from "luxon";
+import { RestClientV5 } from "bybit-api";
 import { EVENTS } from "../utils/constants";
 import { splitIntoGroups } from "../utils/helpers";
 
@@ -9,9 +10,11 @@ class BybitAPIService extends EventEmitter {
   private connections: WebSocket[] = [];
   private reconnectAttempts: number = 0;
   private maxReconnectAttempts: number = 5;
+  private client: RestClientV5;
 
   constructor() {
     super();
+    this.client = new RestClientV5();
     this.initialize();
   }
 
@@ -26,30 +29,32 @@ class BybitAPIService extends EventEmitter {
 
   private async fetchSymbols() {
     try {
-      const response = await fetch(`https://api.bybit.com/v2/public/symbols`);
-      const data = (await response.json()) as Record<string, any>;
-      if (!data) console.log("no data");
+      const res = await this.client.getInstrumentsInfo({
+        category: "linear",
+      });
 
-      if (data?.result) {
-        this.symbols = data.result
+      if (res?.result?.list) {
+        this.symbols = res.result.list
           .filter((item: Record<string, any>) => {
-            const name = item.name;
-            const last3 = name.slice(name.length - 4, name.length);
-            return last3 === "USDT" && item.status === "Trading";
+            return (
+              item.contractType === "LinearPerpetual" &&
+              item.status === "Trading"
+            );
           })
-          .map((item: any) => item.name);
+          .map((item: any) => item.symbol);
 
         this.emit(EVENTS.SYMBOLS_FETCHED, this.symbols);
       } else {
         console.log("No symbols found on Bybit");
       }
-    } catch (error) {
+    } catch (e) {
       console.error("Something went wrong. Try again later");
       return [];
     }
   }
 
   private connectToStream(symbols: string[], index: number) {
+    // console.log("Connecting to Bybit WebSocket", symbols);
     const wsUrl = `wss://stream.bybit.com/v5/public/linear`;
     const wSocket = new WebSocket(wsUrl);
     this.connections[index] = wSocket;
@@ -68,7 +73,10 @@ class BybitAPIService extends EventEmitter {
         console.log(error);
       }
 
-      console.log("Bybit connections: ", this.connections.length);
+      console.log(
+        "Bybit connections: ",
+        `${index + 1}/${this.connections.length}`
+      );
       console.log(
         `WebSocket connection established on Bybit for group ${symbols}`
       );

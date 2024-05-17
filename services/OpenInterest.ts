@@ -1,6 +1,7 @@
 import Binance from "node-binance-api";
 import { RestClientV5 } from "bybit-api";
 import { OPEN_INTEREST_INTERVAL, type PlatformType } from "../utils/constants";
+import Bottleneck from "bottleneck";
 
 interface OpenInterestResult {
   symbol: string;
@@ -32,6 +33,8 @@ class OpenInterestService {
   };
   private binance: Binance;
   private bybit: RestClientV5;
+  private binanceLimiter: Bottleneck;
+  private bybitLimiter: Bottleneck;
   private updateInterval: NodeJS.Timer | null = null;
 
   constructor() {
@@ -41,14 +44,27 @@ class OpenInterestService {
       Coinbase: [],
     };
     this.binance = new Binance().options({
-      APIKEY:
-        "YSh6moYvbRInOjDi0goCD7wME5PVPUFzahqHrNjTTgXKdlzA8FpMRE6zoLeQ94FN",
-      APISECRET:
-        "AOa0kSbs3JZeJJjizeskzZkxb2UTuCntGqagFClLo3sYS7RINuzwCmN8NTHiIdvS",
+      APIKEY: process.env.BINANCE_API_KEY,
+      APISECRET: process.env.BINANCE_API_SECRET,
       useServerTime: true,
     });
 
     this.bybit = new RestClientV5();
+    this.binanceLimiter = new Bottleneck({
+      reservoir: 19,
+      reservoirRefreshAmount: 19,
+      reservoirRefreshInterval: 1000,
+      maxConcurrent: 1,
+      minTime: 40,
+    });
+
+    this.bybitLimiter = new Bottleneck({
+      reservoir: 9,
+      reservoirRefreshAmount: 9,
+      reservoirRefreshInterval: 1000,
+      maxConcurrent: 1,
+      minTime: 40,
+    });
   }
 
   public startPolling(symbols: string[], platform: PlatformType): void {
@@ -130,39 +146,58 @@ class OpenInterestService {
   private async fetchBinanceOI(
     symbol: string
   ): Promise<OpenInterestResult | null> {
-    try {
-      const openInterest = await this.binance.futuresOpenInterest(symbol);
-      if (!openInterest) return null;
+    const wrappedFunc = this.binanceLimiter.wrap(async () => {
+      try {
+        const openInterest = await this.binance.futuresOpenInterest(symbol);
+        if (!openInterest) return null;
 
-      return {
-        symbol,
-        openInterest: parseFloat(openInterest),
-      };
-    } catch (error) {
-      console.error("Error fetching open interest for", symbol, ":", error);
-      return null;
-    }
+        return {
+          symbol,
+          openInterest: parseFloat(openInterest),
+        };
+      } catch (error) {
+        console.log(
+          "BINANCE: Error fetching open interest for",
+          symbol,
+          ":",
+          error
+        );
+        return null;
+      }
+    });
+
+    return wrappedFunc();
   }
 
   async fetchBybitOI(symbol: string): Promise<OpenInterestResult | null> {
-    try {
-      const response = await this.bybit.getOpenInterest({
-        symbol,
-        category: "linear",
-        intervalTime: "5min",
-      });
+    const wrappedFunc = this.bybitLimiter.wrap(async () => {
+      try {
+        const response = await this.bybit.getOpenInterest({
+          symbol,
+          category: "linear",
+          intervalTime: "5min",
+        });
 
-      const result = response.result?.list?.[0];
-      if (!result) return null;
+        const result = response.result?.list?.[0];
+        if (!result) return null;
 
-      return {
-        symbol,
-        openInterest: Number(result.openInterest),
-      };
-    } catch (error) {
-      console.error("Bybit Error:", error);
-      return null;
-    }
+        return {
+          symbol,
+          openInterest: Number(result.openInterest),
+        };
+      } catch (error) {
+        console.log(
+          "BYBIT: Error fetching open interest for",
+          symbol,
+          ":",
+          error
+        );
+
+        return null;
+      }
+    });
+
+    return wrappedFunc();
   }
 
   public getData(): OpenInterestData {
