@@ -64,45 +64,50 @@ export const sendSelectPairs = (
   action: "send" | "edit" = "send"
 ) => {
   const chatConfig = botService.getChatConfig(String(message.chat.id));
+  const selections = [
+    [
+      {
+        text: "🥇 TOP 50",
+        callback_data: "0-50",
+      },
+      {
+        text: "🥈 TOP 100",
+        callback_data: "0-100",
+      },
+      {
+        text: "🥉 TOP 200",
+        callback_data: "0-200",
+      },
+    ],
+    [
+      {
+        text: "🥇 50 - 300+",
+        callback_data: "50-END",
+      },
+      {
+        text: "🥈 100 - 300+",
+        callback_data: "100-END",
+      },
+      {
+        text: "🥉 200 - 300+",
+        callback_data: "200-END",
+      },
+    ],
+    [
+      {
+        text: i18next.t("all-pairs", {
+          lng: chatConfig?.language,
+        }),
+        callback_data: "ALL-PAIRS",
+      },
+    ],
+  ];
   const withBackButton =
     action === "edit"
       ? {
           reply_markup: {
             inline_keyboard: [
-              [
-                {
-                  text: "TOP 50",
-                  callback_data: "0-50",
-                },
-                {
-                  text: "TOP 100",
-                  callback_data: "0-100",
-                },
-                {
-                  text: "TOP 200",
-                  callback_data: "0-200",
-                },
-              ],
-              [
-                {
-                  text: "50+",
-                  callback_data: "50-END",
-                },
-                {
-                  text: "100+",
-                  callback_data: "100-END",
-                },
-                {
-                  text: "200+",
-                  callback_data: "200-END",
-                },
-              ],
-              [
-                {
-                  text: "ALL",
-                  callback_data: "ALL-PAIRS",
-                },
-              ],
+              ...selections,
               [
                 {
                   text: i18next.t("back", {
@@ -114,7 +119,11 @@ export const sendSelectPairs = (
             ],
           },
         }
-      : {};
+      : {
+          reply_markup: {
+            inline_keyboard: [...selections],
+          },
+        };
 
   const options = {
     parse_mode: "Markdown" as ParseMode,

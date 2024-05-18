@@ -31,7 +31,6 @@ class MultiTradeQueue {
   } = {
     Binance: {},
     Bybit: {},
-    Coinbase: {},
   };
   private lastSignificantPump: Record<
     string,

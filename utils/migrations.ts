@@ -1,6 +1,5 @@
 import { ChatState, type ChatConfig } from "@prisma/client";
 import { DateTime } from "luxon";
-import { DEFAULT_PAIRS } from "./constants";
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient({

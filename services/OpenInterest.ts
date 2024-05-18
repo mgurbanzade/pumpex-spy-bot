@@ -153,13 +153,11 @@ class OpenInterestService {
           openInterest: parseFloat(openInterest),
         };
       } catch (error) {
-        console.log(
-          "BINANCE: Error fetching open interest for",
+        console.log("BINANCE: Error fetching open interest for", symbol);
+        return {
           symbol,
-          ":",
-          error
-        );
-        return null;
+          openInterest: 0,
+        };
       }
     });
 
@@ -183,14 +181,12 @@ class OpenInterestService {
           openInterest: Number(result.openInterest),
         };
       } catch (error) {
-        console.log(
-          "BYBIT: Error fetching open interest for",
-          symbol,
-          ":",
-          error
-        );
+        console.log("BYBIT: Error fetching open interest for", symbol);
 
-        return null;
+        return {
+          symbol,
+          openInterest: 0,
+        };
       }
     });
 

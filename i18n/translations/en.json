@@ -4,13 +4,13 @@
   "help": "💬 Help",
   "support-chat": "💬 Support chat",
   "stop": "🛑 Stop",
-  "greeting": "👋 Greetings!\n\nI'm Pumpex Spy 🕵️‍♂️ - a bot for spying pumps on crypto exchanges.\n\n⏰ Your free trial period has just started. It ends in *{{days}} days*.\n\nTo get started, you need to complete 2 tasks:\n\n*1. Subscribe to the channel*\n\n*2. Select the trading pairs you want to track*\n\n*Let's get started!*\n\n\n_P.S Default pairs:\n\n {{pairs}}_",
+  "greeting": "👋 Greetings!\n\nI'm Pumpex Spy 🕵️‍♂️ - a bot for spying pumps on crypto exchanges.\n\n⏰ Your free trial period has just started. It ends in *{{days}} days*.\n\nTo get started, you need to complete 2 tasks:\n\n*1. Subscribe to the channel*\n\n*2. Select the trading pairs you want to track*\n\n*Let's get started!*\n\n\n*P.S All available perpetual futures are selected by default.*",
   "help-message": "💡 Having difficulties?",
   "select-pairs": "✅️️ Select pairs",
   "select-percentage": "📈 Change percentage",
   "select-language": "🌍 Language",
   "select-percentage-desc": "*Please send what percentage of pumps you want to detect.*\n\nThe lower the value, the more notifications.\n\n*Min: {{min}}%*\n\n*Default: {{default}}%*",
-  "select-pairs-desc": "*Please write and send me comma-separated pairs you want to track*\n\n*Example:* BTCUSDT, ETHUSDT\n\n_P.S In case of mistakes settings will be ignored_",
+  "select-pairs-desc": "*Please write and send me comma-separated pairs you want to track or choose one of the options below*\n\n*Example:* BTCUSDT, ETHUSDT\n\n_P.S In case of mistakes settings will be ignored_",
   "select-settings": "*Choose settings:*",
   "settings-saved-general": "✅ Done!\n\nPump percentage: {{percentage}}%",
   "settings-saved": "✅ Settings saved!",
@@ -56,5 +56,6 @@
   "in-dev-desc": "🚧 The ability to customize the percentage and interval for each pair.\n\n🚧 Integration of additional exchanges.\n\n🚧 Increasing the time interval.\n\n🚧 Additional payment methods.\n\n💡 *We are also open to your suggestions.*\n\n[Contact support](https://t.me/pumpexsupport) for any questions.",
   "subscribe-to-channel": "📢 Subscribe to the channel",
   "trial-ended": "⏰ Your free trial has ended.\n\n💳 Please subscribe to continue receiving notifications",
-  "minutes-short": "min"
+  "minutes-short": "min",
+  "all-pairs": "🏆 ALL"
 }

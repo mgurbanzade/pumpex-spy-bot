@@ -14,7 +14,6 @@ import type BotService from "../services/BotService";
 import i18next from "../i18n";
 import {
   DEFAULT_LANGUAGE,
-  DEFAULT_PAIRS,
   DEFAULT_PERCENTAGE,
   DEFAULT_WINDOW_SIZE_MS,
   MAX_PERCENTAGE,
@@ -61,6 +60,8 @@ export const setNewChat = async (
     ? lang
     : DEFAULT_LANGUAGE;
 
+  const allPairs = botService.getAllTopPairs();
+
   const config: Prisma.ChatConfigCreateInput = {
     firstName: message.from?.first_name as string,
     chatId: String(message.chat.id),
@@ -68,7 +69,7 @@ export const setNewChat = async (
     language,
     percentage: DEFAULT_PERCENTAGE,
     windowSize: DEFAULT_WINDOW_SIZE_MS,
-    selectedPairs: DEFAULT_PAIRS,
+    selectedPairs: allPairs,
     stoppedExchanges: [],
     state: PrismaChatState.START,
     paidUntil: null,

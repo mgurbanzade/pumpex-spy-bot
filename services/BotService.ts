@@ -61,6 +61,7 @@ export default class BotService extends EventEmitter {
   private pumpServices: { [key: string]: PumpService };
   private availableSymbols: string[];
   private pairsToSubscribe: string[] = [];
+  private allTopPairs: string[] = [];
 
   constructor(
     config: ConfigService,
@@ -72,6 +73,7 @@ export default class BotService extends EventEmitter {
     this.oiService = oiService;
     this.topPairsService = topPairsService;
     this.availableSymbols = [];
+    this.allTopPairs = [];
     this.pumpServices = {};
 
     this.limiter = new Bottleneck({
@@ -82,7 +84,7 @@ export default class BotService extends EventEmitter {
       minTime: 40,
     });
 
-    this.bot = new TelegramBot(process.env.TELEGRAM_API_PROD_TOKEN as string, {
+    this.bot = new TelegramBot(process.env.TELEGRAM_API_TEST_TOKEN as string, {
       polling: true,
     });
 
@@ -138,6 +140,7 @@ export default class BotService extends EventEmitter {
   public async initialize() {
     const chatConfigs = this.config.getAll();
     const uniqConfig = getUniqueConfigs(chatConfigs);
+    this.allTopPairs = await this.getTopPairs([0, Infinity]);
 
     console.log(uniqConfig);
 
@@ -447,6 +450,10 @@ export default class BotService extends EventEmitter {
 
   public getPumpServices() {
     return this.pumpServices;
+  }
+
+  public getAllTopPairs() {
+    return this.allTopPairs;
   }
 
   public async getTopPairs([start, final]: number[]) {
