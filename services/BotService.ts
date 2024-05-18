@@ -84,7 +84,7 @@ export default class BotService extends EventEmitter {
       minTime: 40,
     });
 
-    this.bot = new TelegramBot(process.env.TELEGRAM_API_TEST_TOKEN as string, {
+    this.bot = new TelegramBot(process.env.TELEGRAM_API_PROD_TOKEN as string, {
       polling: true,
     });
 
