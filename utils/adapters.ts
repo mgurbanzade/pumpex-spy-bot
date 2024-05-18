@@ -2,7 +2,6 @@ import type {
   BinanceAggTradeMessage,
   BybitTradeData,
   BybitTradeMessage,
-  CoinbaseTradeData,
   AdaptedMessage,
 } from "../types";
 
@@ -37,17 +36,4 @@ export const adaptBybitMessage = (
   };
 
   return { platform: "Bybit", pair, trade };
-};
-
-export const adaptCoinbaseMessage = (
-  message: CoinbaseTradeData
-): AdaptedMessage => {
-  const pair = message.product_id;
-  const trade = {
-    price: message.price,
-    timestamp: new Date(message.time).getTime(),
-    volume: parseFloat(message.size) * parseFloat(message.price),
-  };
-
-  return { platform: "Coinbase", pair, trade };
 };

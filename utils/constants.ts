@@ -7,52 +7,16 @@ export const HELP_MESSAGE_SCHEDULE = "35 15 * * *";
 export const TRIAL_END_MESSAGE_SCHEDULE = "0 10,20 * * *";
 export const CHANNEL_URL = "https://t.me/pumpexapp";
 export const SUPPORT_CHAT_URL = "https://t.me/pumpexsupport";
-export type PlatformType = "Binance" | "Bybit" | "Coinbase";
+export type PlatformType = "Binance" | "Bybit";
 
 export const OPEN_INTEREST_INTERVAL = 60000 * 6; // 6 minutes
-export const DEFAULT_SUBSCRIPTION_PRICE = 29;
-export const DEFAULT_PAIRS = [
-  "BTCUSDT",
-  "ETHUSDT",
-  "BNBUSDT",
-  "SOLUSDT",
-  "XRPUSDT",
-  "TONUSDT",
-  "ADAUSDT",
-  "AVAXUSDT",
-  "DOTUSDT",
-  "BCHUSDT",
-  "LINKUSDT",
-  "LTCUSDT",
-  "BONKUSDT",
-  "PEPEUSDT",
-  "SHIBUSDT",
-  "FLOKIUSDT",
-  "DOGEUSDT",
-  "1000BONKUSDT",
-  "1000PEPEUSDT",
-  "SHIB1000USDT",
-  "1000FLOKIUSDT",
-  "BTC-USD",
-  "ETH-USD",
-  "SOL-USD",
-  "XRP-USD",
-  "DOGE-USD",
-  "ADA-USD",
-  "AVAX-USD",
-  "DOT-USD",
-  "BCH-USD",
-  "LINK-USD",
-  "LTC-USD",
-  "BONK-USD",
-  "SHIB-USD",
-];
+export const DEFAULT_SUBSCRIPTION_PRICE = 19;
 export const DEFAULT_LANGUAGE = Language.EN;
-export const DEFAULT_PERCENTAGE = 0.3;
+export const DEFAULT_PERCENTAGE = 1;
 export const DEFAULT_MULTIPLIER = 1.25;
 
 export const MIN_WINDOW_SIZE_MS = 30000;
-export const DEFAULT_WINDOW_SIZE_MS = 150000;
+export const DEFAULT_WINDOW_SIZE_MS = 300000;
 export const MAX_WINDOW_SIZE_MS = 600000;
 
 export const MIN_PERCENTAGE = 0.1;
@@ -64,11 +28,3 @@ export const EVENTS = {
   SUBSCRIPTIONS_UPDATED: "SUBSCRIPTIONS_UPDATED",
   CONFIG_LOADED: "CONFIG_LOADED",
 };
-
-export const DISABLED_PAIRS = [
-  "EURC-USD",
-  "MOBILE/USD",
-  "STRK/USD",
-  "RENDER/USD",
-  "cbETH-USD",
-];

@@ -14,7 +14,6 @@ import type BotService from "../services/BotService";
 import i18next from "../i18n";
 import {
   DEFAULT_LANGUAGE,
-  DEFAULT_PAIRS,
   DEFAULT_PERCENTAGE,
   DEFAULT_WINDOW_SIZE_MS,
   MAX_PERCENTAGE,
@@ -61,6 +60,8 @@ export const setNewChat = async (
     ? lang
     : DEFAULT_LANGUAGE;
 
+  const allPairs = botService.getAllTopPairs();
+
   const config: Prisma.ChatConfigCreateInput = {
     firstName: message.from?.first_name as string,
     chatId: String(message.chat.id),
@@ -68,7 +69,7 @@ export const setNewChat = async (
     language,
     percentage: DEFAULT_PERCENTAGE,
     windowSize: DEFAULT_WINDOW_SIZE_MS,
-    selectedPairs: DEFAULT_PAIRS,
+    selectedPairs: allPairs,
     stoppedExchanges: [],
     state: PrismaChatState.START,
     paidUntil: null,
@@ -232,7 +233,6 @@ export const handleCallbackQuery = (
       break;
     case "binance":
     case "bybit":
-    case "coinbase":
       handleStopExchanges(message, botService, data);
       break;
     case "set-default-exchanges":
@@ -286,6 +286,27 @@ export const handleCallbackQuery = (
       break;
     case "support-chat":
       sendHelpOptions(message, botService, "edit");
+      break;
+    case "0-50":
+      handleTOPSelection(message, botService, [0, 50]);
+      break;
+    case "0-100":
+      handleTOPSelection(message, botService, [0, 100]);
+      break;
+    case "0-200":
+      handleTOPSelection(message, botService, [0, 200]);
+      break;
+    case "50-END":
+      handleTOPSelection(message, botService, [50, Infinity]);
+      break;
+    case "100-END":
+      handleTOPSelection(message, botService, [100, Infinity]);
+      break;
+    case "200-END":
+      handleTOPSelection(message, botService, [200, Infinity]);
+      break;
+    case "ALL-PAIRS":
+      handleTOPSelection(message, botService, [0, Infinity]);
       break;
     default:
       break;
@@ -592,4 +613,25 @@ const handleWalletPay = async (message: Message, botService: BotService) => {
       }
     );
   }
+};
+
+const handleTOPSelection = async (
+  message: Message,
+  botService: BotService,
+  selection: [number, number]
+) => {
+  const pairs = await botService.getTopPairs(selection);
+
+  botService.updateChatConfig(String(message.chat.id), {
+    state: ChatState.SEARCHING,
+    selectedPairs: pairs,
+  });
+  botService.setPairsToSubscribe(pairs);
+
+  botService.sendMessage(
+    String(message.chat.id),
+    i18next.t("settings-saved", {
+      lng: botService.getChatConfig(String(message.chat.id))?.language,
+    })
+  );
 };

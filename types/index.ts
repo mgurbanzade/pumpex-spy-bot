@@ -41,7 +41,7 @@ export enum ChatState {
 }
 
 export type AdaptedMessage = {
-  platform: "Binance" | "Bybit" | "Coinbase";
+  platform: "Binance" | "Bybit";
   pair: string;
   trade: {
     volume: number;
@@ -85,19 +85,6 @@ export type BybitTradeMessage = {
   type: string;
   ts: number;
   data: BybitTradeData[];
-};
-
-export type CoinbaseTradeData = {
-  type: string;
-  trade_id: number;
-  maker_order_id: string;
-  taker_order_id: string;
-  side: string;
-  size: string;
-  price: string;
-  product_id: string;
-  sequence: number;
-  time: string;
 };
 
 export type WalletWebhookMessage = {
