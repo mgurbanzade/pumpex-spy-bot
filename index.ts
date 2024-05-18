@@ -5,13 +5,14 @@ import ConfigService from "./services/ConfigService";
 import BotService from "./services/BotService";
 import BinanceAPIService from "./services/BinanceAPIService";
 import BybitAPIService from "./services/BybitAPIService";
+import CoinbaseAPIService from "./services/CoinbaseAPIService";
 import { EVENTS } from "./utils/constants";
 import {
   adaptBinanceMessage,
   adaptBybitMessage,
   adaptCoinbaseMessage,
 } from "./utils/adapters";
-// import CoinbaseAPIService from "./services/CoinbaseAPIService";
+
 import {
   ChatState,
   type BinanceAggTradeMessage,
@@ -69,7 +70,7 @@ const addMessageToQueue = (
 
 const bybit = new BybitAPIService();
 const binance = new BinanceAPIService();
-// const coinbase = new CoinbaseAPIService();
+const coinbase = new CoinbaseAPIService();
 const configService = new ConfigService();
 const oiService = new OpenInterestService();
 const topPairsService = new TopPairsService();
@@ -92,18 +93,18 @@ const bybitSymbolsPromise = new Promise((resolve) => {
   });
 });
 
-// const coinbaseSymbolsPromise = new Promise((resolve) => {
-//   coinbase.on(EVENTS.SYMBOLS_FETCHED, (symbols: string[]) => {
-//     bot.setAvailableSymbols(symbols);
-//     resolve(symbols);
-//     console.log("coinbase symbols fetched", symbols.length);
-//   });
-// });
+const coinbaseSymbolsPromise = new Promise((resolve) => {
+  coinbase.on(EVENTS.SYMBOLS_FETCHED, (symbols: string[]) => {
+    bot.setAvailableSymbols(symbols);
+    resolve(symbols);
+    console.log("coinbase symbols fetched", symbols.length);
+  });
+});
 
 Promise.all([
   binanceSymbolsPromise,
   bybitSymbolsPromise,
-  // coinbaseSymbolsPromise,
+  coinbaseSymbolsPromise,
 ]).then(async () => {
   await configService.initialize();
   await bot.initialize();
@@ -118,15 +119,15 @@ bybit.on(EVENTS.MESSAGE_RECEIVED, (message) => {
   addMessageToQueue(message, "bybit");
 });
 
-// coinbase.on(EVENTS.MESSAGE_RECEIVED, (message) => {
-//   if (!message || message.type !== "match") return;
-//   addMessageToQueue(message, "coinbase");
-// });
+coinbase.on(EVENTS.MESSAGE_RECEIVED, (message) => {
+  if (!message || message.type !== "match") return;
+  addMessageToQueue(message, "coinbase");
+});
 
 bot.on(EVENTS.SUBSCRIPTIONS_UPDATED, (symbols: string[]) => {
   const availableBybitSymbols = bybit.getSymbols();
   const availableBinanceSymbols = binance.getSymbols();
-  // const availableCoinbaseSymbols = coinbase.getSymbols();
+  const availableCoinbaseSymbols = coinbase.getSymbols();
 
   const bybitSymbols = symbols.filter((symbol) =>
     availableBybitSymbols.includes(symbol)
@@ -136,9 +137,9 @@ bot.on(EVENTS.SUBSCRIPTIONS_UPDATED, (symbols: string[]) => {
     availableBinanceSymbols.includes(symbol)
   );
 
-  // const coinbaseSymbols = symbols.filter((symbol) =>
-  //   availableCoinbaseSymbols.includes(symbol)
-  // );
+  const coinbaseSymbols = symbols.filter((symbol) =>
+    availableCoinbaseSymbols.includes(symbol)
+  );
 
   bybit.subscribeToStreams(bybitSymbols);
   oiService.startPolling(bybitSymbols, "Bybit");
@@ -146,7 +147,7 @@ bot.on(EVENTS.SUBSCRIPTIONS_UPDATED, (symbols: string[]) => {
   binance.subscribeToStreams(binanceSymbols);
   oiService.startPolling(binanceSymbols, "Binance");
 
-  // coinbase.subscribeToStreams(coinbaseSymbols);
+  coinbase.subscribeToStreams(coinbaseSymbols);
 });
 
 configService.on(EVENTS.CONFIG_LOADED, (config: ChatConfig[]) => {

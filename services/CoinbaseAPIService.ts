@@ -1,8 +1,11 @@
 import EventEmitter from "events";
 import WebSocket from "ws";
 import { DateTime } from "luxon";
-import { DISABLED_PAIRS, EVENTS } from "../utils/constants";
+import { EVENTS } from "../utils/constants";
 import { splitIntoGroups } from "../utils/helpers";
+import axios from "axios";
+import { sign } from "jsonwebtoken";
+import crypto from "crypto";
 
 class CoinbaseAPIService extends EventEmitter {
   private symbols: string[] = [];
@@ -30,35 +33,39 @@ class CoinbaseAPIService extends EventEmitter {
   };
 
   private async fetchSymbols() {
+    const jwtToken = await this.getCoinbaseJWTToken();
+
     try {
-      const response = await fetch(
-        `https://api.exchange.coinbase.com/products`
+      const res = await axios.get(
+        "https://api.coinbase.com/api/v3/brokerage/products",
+        {
+          headers: {
+            Authorization: `Bearer ${jwtToken}`,
+          },
+          params: {
+            product_type: "FUTURE",
+            contract_expiry_type: "PERPETUAL",
+            expiring_contract_status: "STATUS_ALL",
+          },
+        }
       );
-      const data = (await response.json()) as Record<string, any>;
-      if (!data) console.log("no data");
 
-      if (data) {
-        this.symbols = data
-          .filter((item: Record<string, any>) => {
-            return (
-              item.status === "online" &&
-              !DISABLED_PAIRS.includes(item.display_name)
-            );
-          })
-          .map((item: any) => item.display_name);
-
-        this.emit(EVENTS.SYMBOLS_FETCHED, this.symbols);
-      } else {
-        console.log("No symbols found on Coinbase");
+      if (!res?.data?.products) {
+        console.log("No products found on Coinbase");
+        return [];
       }
-    } catch (error) {
-      console.error("Something went wrong. Try again later");
-      return [];
+
+      this.symbols = res.data.products.map((item: any) => item.product_id);
+      this.emit(EVENTS.SYMBOLS_FETCHED, this.symbols);
+    } catch (e) {
+      console.log(
+        "CoinbaseAPIService: Something went wrong. Couldnt fetch symbols"
+      );
     }
   }
 
   private connectToStream(pairsGroup: string[], index: number) {
-    const wsUrl = `wss://ws-feed.pro.coinbase.com`;
+    const wsUrl = `wss://ws-md.international.coinbase.com`;
     const wSocket = new WebSocket(wsUrl, {
       perMessageDeflate: true,
       maxPayload: 1024 * 1024 * 2,
@@ -153,6 +160,36 @@ class CoinbaseAPIService extends EventEmitter {
     });
 
     this.connections = [];
+  }
+
+  private async getCoinbaseJWTToken() {
+    const keyName = process.env.COINBASE_API_KEY;
+    const keySecret = process.env.COINBASE_PRIVATE_KEY;
+    const requestMethod = "GET";
+    const url = "api.coinbase.com";
+    const requestPath = "/api/v3/brokerage/products";
+    const algorithm = "ES256";
+    const uri = requestMethod + " " + url + requestPath;
+
+    const token = sign(
+      {
+        iss: "coinbase-cloud",
+        nbf: Math.floor(Date.now() / 1000),
+        exp: Math.floor(Date.now() / 1000) + 120,
+        sub: keyName,
+        uri,
+      },
+      keySecret as any,
+      {
+        algorithm,
+        header: {
+          kid: keyName,
+          nonce: crypto.randomBytes(16).toString("hex"),
+        },
+      } as any
+    );
+
+    return token;
   }
 }
 

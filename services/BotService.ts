@@ -459,25 +459,32 @@ export default class BotService extends EventEmitter {
     try {
       const binanceFutures = await this.topPairsService.getBinanceFutures();
       const bybitFutures = await this.topPairsService.getBybitFutures();
+      const coinbaseFutures = await this.topPairsService.getCoinbaseFutures();
 
       const maxLength = Math.max(
         binanceFutures?.length as number,
-        bybitFutures?.length as number
+        bybitFutures?.length as number,
+        coinbaseFutures?.length as number
       );
       const end = final === Infinity ? maxLength : final;
       const size = end - start;
 
-      const [binance, bybit] = await Promise.all([
+      const [binance, bybit, coinbase] = await Promise.all([
         binanceFutures,
         bybitFutures,
+        coinbaseFutures,
       ]);
 
       let i = start || 0;
       let j = start || 0;
+      let k = start || 0;
+
       const binancePairs = [];
       const bybitPairs = [];
+      const coinbasePairs = [];
       const addedBinanceAssets = new Set<string>();
       const addedBybitAssets = new Set<string>();
+      const addedCoinbaseAssets = new Set<string>();
 
       while (true) {
         const pair = binance?.[i];
@@ -500,9 +507,19 @@ export default class BotService extends EventEmitter {
         if (addedBybitAssets.size === size) break;
       }
 
-      // console.log(binancePairs);
+      while (true) {
+        const pair = coinbase?.[k];
+        if (!pair) break;
 
-      return Array.from(new Set([...binancePairs, ...bybitPairs]));
+        addedCoinbaseAssets.add(pair.baseAsset);
+        coinbasePairs.push(pair.pair);
+        k++;
+        if (addedCoinbaseAssets.size === size) break;
+      }
+
+      return Array.from(
+        new Set([...binancePairs, ...bybitPairs, ...coinbasePairs])
+      );
     } catch (e) {
       console.log("Error fetching top pairs", e);
       return [];
