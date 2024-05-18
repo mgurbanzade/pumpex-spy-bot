@@ -45,7 +45,6 @@ import {
   isNegativeChatId,
   getBinanceFuturesURL,
   getBybitFuturesURL,
-  getCoinbaseURL,
   getPriceInFloatingPoint,
 } from "../utils/helpers";
 import { type PlatformType } from "../utils/constants";
@@ -83,7 +82,7 @@ export default class BotService extends EventEmitter {
       minTime: 40,
     });
 
-    this.bot = new TelegramBot(process.env.TELEGRAM_API_TEST_TOKEN as string, {
+    this.bot = new TelegramBot(process.env.TELEGRAM_API_PROD_TOKEN as string, {
       polling: true,
     });
 
@@ -378,19 +377,14 @@ export default class BotService extends EventEmitter {
     chatIds: string[]
   ) {
     const { pair, minPrice, lastPrice, diff, volumeChange } = checkResult;
-    const openInterest =
-      platform !== "Coinbase"
-        ? this.oiService.getOIForSymbol(pair, platform)
-        : null;
+    const openInterest = this.oiService.getOIForSymbol(pair, platform);
 
-    const currency = platform === "Coinbase" ? pair.split("-")[1] : "USDT";
+    const currency = "USDT";
 
     const link =
       platform === "Binance"
         ? getBinanceFuturesURL(pair)
-        : platform === "Bybit"
-        ? getBybitFuturesURL(pair)
-        : getCoinbaseURL(pair);
+        : getBybitFuturesURL(pair);
 
     const alertFns = chatIds.map(async (chatId) => {
       const {
@@ -459,32 +453,26 @@ export default class BotService extends EventEmitter {
     try {
       const binanceFutures = await this.topPairsService.getBinanceFutures();
       const bybitFutures = await this.topPairsService.getBybitFutures();
-      const coinbaseFutures = await this.topPairsService.getCoinbaseFutures();
 
       const maxLength = Math.max(
         binanceFutures?.length as number,
-        bybitFutures?.length as number,
-        coinbaseFutures?.length as number
+        bybitFutures?.length as number
       );
       const end = final === Infinity ? maxLength : final;
       const size = end - start;
 
-      const [binance, bybit, coinbase] = await Promise.all([
+      const [binance, bybit] = await Promise.all([
         binanceFutures,
         bybitFutures,
-        coinbaseFutures,
       ]);
 
       let i = start || 0;
       let j = start || 0;
-      let k = start || 0;
 
       const binancePairs = [];
       const bybitPairs = [];
-      const coinbasePairs = [];
       const addedBinanceAssets = new Set<string>();
       const addedBybitAssets = new Set<string>();
-      const addedCoinbaseAssets = new Set<string>();
 
       while (true) {
         const pair = binance?.[i];
@@ -507,19 +495,7 @@ export default class BotService extends EventEmitter {
         if (addedBybitAssets.size === size) break;
       }
 
-      while (true) {
-        const pair = coinbase?.[k];
-        if (!pair) break;
-
-        addedCoinbaseAssets.add(pair.baseAsset);
-        coinbasePairs.push(pair.pair);
-        k++;
-        if (addedCoinbaseAssets.size === size) break;
-      }
-
-      return Array.from(
-        new Set([...binancePairs, ...bybitPairs, ...coinbasePairs])
-      );
+      return Array.from(new Set([...binancePairs, ...bybitPairs]));
     } catch (e) {
       console.log("Error fetching top pairs", e);
       return [];

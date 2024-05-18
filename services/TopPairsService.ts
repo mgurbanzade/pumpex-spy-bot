@@ -1,6 +1,4 @@
 import axios from "axios";
-import { sign } from "jsonwebtoken";
-import crypto from "crypto";
 import { RestClientV5 } from "bybit-api";
 import { DateTime } from "luxon";
 import Binance from "node-binance-api";
@@ -167,97 +165,6 @@ class TopPairsService {
     } catch {
       console.log("Error fetching bybit futures");
     }
-  }
-
-  public async getCoinbaseFutures() {
-    const symbols = await this.getTopCoins();
-    const jwtToken = await this.getCoinbaseJWTToken();
-
-    try {
-      const res = await axios.get(
-        "https://api.coinbase.com/api/v3/brokerage/products",
-        {
-          headers: {
-            Authorization: `Bearer ${jwtToken}`,
-          },
-          params: {
-            product_type: "FUTURE",
-            contract_expiry_type: "PERPETUAL",
-            expiring_contract_status: "STATUS_ALL",
-          },
-        }
-      );
-
-      if (!res?.data?.products) {
-        console.log("No products found on Coinbase");
-        return [];
-      }
-
-      const tokens1000 = ["1000PEPE PERP"];
-
-      const futures = Array.from(symbols).reduce((acc: any[], pair: any) => {
-        const assets = res.data.products.filter((s: any) => {
-          const baseAsset = s.display_name
-            .replace("PERP", "")
-            .trim()
-            .split("1000")[1];
-
-          if (
-            tokens1000.includes(s.display_name) &&
-            baseAsset === pair.symbol
-          ) {
-            return true;
-          }
-
-          return s.display_name.replace("PERP", "").trim() === pair.symbol;
-        });
-
-        return assets.length
-          ? [
-              ...acc,
-              ...assets.map((asset: any) => ({
-                pair: asset.product_id,
-                marketCap: pair.marketCap,
-                baseAsset: asset.display_name.replace("PERP", "").trim(),
-              })),
-            ]
-          : acc;
-      }, []);
-
-      return futures;
-    } catch (error) {
-      console.log(error);
-    }
-  }
-
-  private async getCoinbaseJWTToken() {
-    const keyName = process.env.COINBASE_API_KEY;
-    const keySecret = process.env.COINBASE_PRIVATE_KEY;
-    const requestMethod = "GET";
-    const url = "api.coinbase.com";
-    const requestPath = "/api/v3/brokerage/products";
-    const algorithm = "ES256";
-    const uri = requestMethod + " " + url + requestPath;
-
-    const token = sign(
-      {
-        iss: "coinbase-cloud",
-        nbf: Math.floor(Date.now() / 1000),
-        exp: Math.floor(Date.now() / 1000) + 120,
-        sub: keyName,
-        uri,
-      },
-      keySecret as any,
-      {
-        algorithm,
-        header: {
-          kid: keyName,
-          nonce: crypto.randomBytes(16).toString("hex"),
-        },
-      } as any
-    );
-
-    return token;
   }
 }
 

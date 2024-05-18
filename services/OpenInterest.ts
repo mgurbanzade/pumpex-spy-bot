@@ -24,12 +24,10 @@ class OpenInterestService {
   private data: OpenInterestData = {
     Binance: {},
     Bybit: {},
-    Coinbase: {},
   };
   private symbols: {
     Binance: string[];
     Bybit: string[];
-    Coinbase: string[];
   };
   private binance: Binance;
   private bybit: RestClientV5;
@@ -41,7 +39,6 @@ class OpenInterestService {
     this.symbols = {
       Binance: [],
       Bybit: [],
-      Coinbase: [],
     };
     this.binance = new Binance().options({
       APIKEY: process.env.BINANCE_API_KEY,

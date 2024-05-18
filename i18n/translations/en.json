@@ -10,7 +10,7 @@
   "select-percentage": "📈 Change percentage",
   "select-language": "🌍 Language",
   "select-percentage-desc": "*Please send what percentage of pumps you want to detect.*\n\nThe lower the value, the more notifications.\n\n*Min: {{min}}%*\n\n*Default: {{default}}%*",
-  "select-pairs-desc": "*Please write and send me comma-separated pairs you want to track*\n\n*Example:* BTCUSDT, ETHUSDT or BTC-USDT, ETH-USDT for Coinbase\n\n_P.S In case of mistakes settings will be ignored_",
+  "select-pairs-desc": "*Please write and send me comma-separated pairs you want to track*\n\n*Example:* BTCUSDT, ETHUSDT\n\n_P.S In case of mistakes settings will be ignored_",
   "select-settings": "*Choose settings:*",
   "settings-saved-general": "✅ Done!\n\nPump percentage: {{percentage}}%",
   "settings-saved": "✅ Settings saved!",

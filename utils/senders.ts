@@ -356,10 +356,6 @@ export const sendExchangesOptions = (
             text: "❌ Bybit",
             callback_data: "bybit",
           },
-          {
-            text: "❌ Coinbase",
-            callback_data: "coinbase",
-          },
         ],
         [
           {

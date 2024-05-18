@@ -54,10 +54,6 @@ export const getBybitFuturesURL = (pair: string) => {
   return `https://www.bybit.com/trade/usdt/${pair}`;
 };
 
-export const getCoinbaseURL = (pair: string) => {
-  return `https://www.coinbase.com/advanced-trade/futures/${pair}`;
-};
-
 export const getPriceInFloatingPoint = (
   price: number,
   platform: PlatformType
@@ -65,7 +61,6 @@ export const getPriceInFloatingPoint = (
   const digitDispatcher = {
     Binance: 7,
     Bybit: 7,
-    Coinbase: 7,
   };
 
   const digit = digitDispatcher[platform];

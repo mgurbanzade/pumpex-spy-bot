@@ -232,7 +232,6 @@ export const handleCallbackQuery = (
       break;
     case "binance":
     case "bybit":
-    case "coinbase":
       handleStopExchanges(message, botService, data);
       break;
     case "set-default-exchanges":

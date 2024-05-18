@@ -7,7 +7,7 @@ export const HELP_MESSAGE_SCHEDULE = "35 15 * * *";
 export const TRIAL_END_MESSAGE_SCHEDULE = "0 10,20 * * *";
 export const CHANNEL_URL = "https://t.me/pumpexapp";
 export const SUPPORT_CHAT_URL = "https://t.me/pumpexsupport";
-export type PlatformType = "Binance" | "Bybit" | "Coinbase";
+export type PlatformType = "Binance" | "Bybit";
 
 export const OPEN_INTEREST_INTERVAL = 60000 * 6; // 6 minutes
 export const DEFAULT_SUBSCRIPTION_PRICE = 29;
