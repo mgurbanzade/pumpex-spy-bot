@@ -181,12 +181,7 @@ export const sendCurrentPairs = (chatId: string, botService: BotService) => {
       percentage: chatConfig.percentage,
     });
 
-    const messageTranslation = i18next.t("current-pairs", {
-      lng: chatConfig.language,
-    });
-    const message = `${startedTranslation}\n\n${percentageTranslation}\n\n${messageTranslation}\n\n${chatConfig.selectedPairs.join(
-      ", "
-    )}`;
+    const message = `${startedTranslation}\n\n${percentageTranslation}`;
 
     return botService.sendMessage(chatId, message, {
       parse_mode: "Markdown" as ParseMode,

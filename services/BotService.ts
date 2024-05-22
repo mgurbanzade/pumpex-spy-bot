@@ -24,7 +24,11 @@ import {
   handleHelp,
 } from "../utils/handlers";
 
-import { EVENTS, OPEN_INTEREST_INTERVAL } from "../utils/constants";
+import {
+  EVENTS,
+  MAX_ACTIVE_SUBSCRIBERS,
+  OPEN_INTEREST_INTERVAL,
+} from "../utils/constants";
 import {
   sendKnowledgeBase,
   sendNegativeIdMessage,
@@ -62,6 +66,7 @@ export default class BotService extends EventEmitter {
   private availableSymbols: string[];
   private pairsToSubscribe: string[] = [];
   private allTopPairs: string[] = [];
+  private intervalId: Timer | null;
 
   constructor(
     config: ConfigService,
@@ -75,6 +80,7 @@ export default class BotService extends EventEmitter {
     this.availableSymbols = [];
     this.allTopPairs = [];
     this.pumpServices = {};
+    this.intervalId = null;
 
     this.limiter = new Bottleneck({
       reservoir: 29,
@@ -161,7 +167,7 @@ export default class BotService extends EventEmitter {
       Object.keys(this.pumpServices).length
     );
     console.log(Object.keys(this.pumpServices));
-    // await this.fetchMarketCaps();
+    this.checkMaxSubscribers();
   }
 
   public handleMessage(message: AdaptedMessage) {
@@ -208,17 +214,20 @@ export default class BotService extends EventEmitter {
     }
 
     console.log("------ ACTIVE PUMPSERVICES ------");
+    const pumpServices = Object.values(this.pumpServices).filter(
+      (pumpService) => pumpService.getChatIds().size > 0
+    );
 
-    Object.values(this.pumpServices)
-      .filter((pumpService) => pumpService.getChatIds().size > 0)
-      .forEach((pumpService) => {
-        console.log(
-          `${pumpService.getPercentage()}:${pumpService.getWindowSize()}`
-        );
-        console.log(
-          `Chat Ids: ${Array.from(pumpService.getChatIds()).join(", ")}`
-        );
-      });
+    pumpServices.forEach((pumpService) => {
+      console.log(
+        `${pumpService.getPercentage()}:${pumpService.getWindowSize()}`
+      );
+      console.log(
+        `Chat Ids: ${Array.from(pumpService.getChatIds()).join(", ")}`
+      );
+    });
+
+    this.checkMaxSubscribers();
   }
   // naming is not correct. This method removes the chatId from the PumpService
   public removePumpService(chatId: string) {
@@ -236,6 +245,8 @@ export default class BotService extends EventEmitter {
         delete this.pumpServices[key];
       }
     }
+
+    this.checkMaxSubscribers();
   }
 
   public setAvailableSymbols(symbols: string[]) {
@@ -371,7 +382,7 @@ export default class BotService extends EventEmitter {
       });
     });
 
-    wrappedFunc();
+    return wrappedFunc();
   }
 
   public async sendAlerts(
@@ -506,6 +517,37 @@ export default class BotService extends EventEmitter {
     } catch (e) {
       console.log("Error fetching top pairs", e);
       return [];
+    }
+  }
+
+  private checkMaxSubscribers() {
+    const chatIds = Object.values(this.pumpServices)
+      .map((service) => Array.from(service.getChatIds()))
+      .flat();
+
+    console.log("TOTAL ACTIVE SUBSCRIBERS: ", chatIds.length);
+
+    if (chatIds.length > MAX_ACTIVE_SUBSCRIBERS) {
+      if (this.intervalId) clearInterval(this.intervalId);
+      this.intervalId = setInterval(() => {
+        console.log(
+          "----------------------ALERT ALERT ALERT----------------------"
+        );
+        console.log(
+          "----------------------TOO MANY CHAT IDS----------------------"
+        );
+        console.log(
+          "----------------------TOO MANY CHAT IDS----------------------"
+        );
+        console.log(
+          "----------------------TOO MANY CHAT IDS----------------------"
+        );
+        console.log(
+          "----------------------TOO MANY CHAT IDS----------------------"
+        );
+      }, 10000);
+    } else {
+      if (this.intervalId) clearInterval(this.intervalId);
     }
   }
 }
