@@ -1,4 +1,4 @@
-# binance-api
+### Telegram Bot For Pump Alerts
 
 To install dependencies:
 
